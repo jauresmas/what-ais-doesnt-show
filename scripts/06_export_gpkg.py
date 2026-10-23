@@ -118,6 +118,14 @@ def chiffres_signaux(geom_wkt):
           (SELECT count(*) FROM indic.stationnement_infra WHERE ST_Intersects(geom, {z})) AS nb_stationnements,
           (SELECT count(DISTINCT mmsi) FROM indic.stationnement_infra WHERE ST_Intersects(geom, {z})) AS nav_stationnements,
           (SELECT count(*) FROM indic.rencontre WHERE ST_Intersects(geom, {z})) AS nb_rencontres""").iloc[0]
+    if requete("SELECT to_regclass('indic.sar_detection') IS NOT NULL AS ok")["ok"][0]:
+        r = requete(f"""
+            SELECT coalesce(sum(detections) FILTER (WHERE NOT apparie
+                       AND categorie <> 'structure fixe probable (parc éolien)'), 0) AS nb_radar_sans_ais,
+                   (count(*) FILTER (WHERE recu_par_reseau))::float
+                   / nullif(count(*) FILTER (WHERE recu_par_reseau IS NOT NULL), 0) AS part_radar_recus
+            FROM indic.sar_detection WHERE ST_Intersects(geom, {z})""").iloc[0]
+        s = pd.concat([s, r])
     cats = requete(f"""SELECT categorie, count(*) AS n FROM indic.coupure
                        WHERE ST_Intersects(geom_debut, {z}) GROUP BY 1""")
     return s.to_dict(), dict(zip(cats["categorie"], cats["n"]))
@@ -176,6 +184,8 @@ if __name__ == "__main__":
             zs[c] = zs[c].astype(int)
     zs["heures_navire"] = zs["heures_navire"].astype(float).round(0)
     zs["part_couverte"] = zs["part_couverte"].astype(float).round(3)
+    if "part_radar_recus" in zs:
+        zs["part_radar_recus"] = zs["part_radar_recus"].astype(float).round(3)
     zs["graphique"] = "graphiques/" + zs["zone_id"] + ".svg"
     ecrire(contours(zs, eng), "zone_contour")
     # géométrie simplifiée (≈ 150 m) pour l'affichage seulement : les chiffres ci-dessus ont été
@@ -255,6 +265,14 @@ if __name__ == "__main__":
     rc.insert(1, "navire_a", pseudonymiser(rc.pop("mmsi_a"), grain))
     rc.insert(2, "navire_b", pseudonymiser(rc.pop("mmsi_b"), grain))
     ecrire(rc, "rencontre")
+
+    # détections radar Sentinel-1 (Global Fishing Watch) : sans MMSI ni identité
+    if requete("SELECT to_regclass('indic.sar_detection') IS NOT NULL AS ok")["ok"][0]:
+        rd = lire("""SELECT id, instant, detections, apparie, recu_par_reseau, classe_couverture, categorie,
+                         round(dist_ais_m) AS dist_ais_m, geom FROM indic.sar_detection""", eng)
+        # booléen avec valeurs nulles : sans type explicite, il partirait en texte 'True' / 'False'
+        rd["recu_par_reseau"] = rd["recu_par_reseau"].astype("boolean")
+        ecrire(rd, "detection_radar")
 
     nv = requete("""SELECT n.mmsi, n.famille, n.pavillon, n.longueur, n.imo_statut, n.nb_noms, n.nb_imo,
                            n.nb_types, n.nb_positions, a.nb_sauts, a.nb_coupures_inexpliquees,

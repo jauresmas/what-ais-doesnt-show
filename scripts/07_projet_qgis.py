@@ -278,6 +278,15 @@ def couches():
     c["rencontre"] = couche("Ship-to-ship encounter", "rencontre")
     c["rencontre"].setRenderer(grappes(point(VERT_EAU, 2.6, "circle", "#ffffff", 0.3), VERT_EAU))
 
+    # détections radar Sentinel-1 sans AIS (Global Fishing Watch), hors structures fixes probables :
+    # petit carré creux à l'encre, distinct des quatre signaux par sa forme et dessiné sous eux ;
+    # couche absente tant que 08_sar_gfw.py n'a pas tourné
+    radar = QgsVectorLayer(f"{CARTO}|layername=detection_radar", "Radar detection, no AIS", "ogr")
+    if radar.isValid():
+        regles(radar, [(point("#ffffff", 1.5, "square", ENCRE_2, 0.3),
+                        "NOT \"apparie\" AND \"categorie\" <> 'structure fixe probable (parc éolien)'", "")])
+        c["radar"] = radar
+
     c["traces"] = couche("Vessel tracks", "trace", fichier=TRACES)
     familles = [("Cargo", "#2a78d6"), ("Tanker", "#eb6834"), ("Passenger", "#1baf7a"),
                 ("Fishing", "#eda100"), ("Service & authorities", "#e87ba4"),
@@ -390,7 +399,7 @@ def etiquettes_lieux(lyr):
 GROUPES = [
     ("Context", ["lieux", "station"]),
     ("Zone sheets", ["perso", "contour", "voile", "zones"]),
-    ("Signals", ["inexpl", "sauts", "stationnement", "rencontre"]),
+    ("Signals", ["inexpl", "sauts", "stationnement", "rencontre", "radar"]),
     ("AIS silences, all categories", ["silences"]),
     ("Indicators", ["indice", "lacunes", "couverture", "trafic_fiche", "trafic"]),
     ("Infrastructure", ["infra_fiche", "infra", "eolien", "mouillage"]),
@@ -400,7 +409,7 @@ GROUPES = [
 ]
 
 THEMES = {
-    "Zone sheet – main map": ["lieux", "contour", "voile", "inexpl", "sauts", "stationnement", "rencontre",
+    "Zone sheet – main map": ["lieux", "contour", "voile", "inexpl", "sauts", "stationnement", "rencontre", "radar",
                               "lacunes", "trafic_fiche", "infra_fiche", "zee", "terre"],
     "Shore AIS coverage": ["lieux", "station", "couverture", "zee", "etude", "terre"],
     "Vigilance index": ["lieux", "indice", "zee", "etude", "terre"],
@@ -425,8 +434,9 @@ def arbre(projet, c):
     for groupe, cles in GROUPES:
         g = racine.addGroup(groupe)
         for k in cles:
-            projet.addMapLayer(c[k], False)
-            g.addLayer(c[k])
+            if k in c:  # la couche radar n'existe qu'après 08_sar_gfw.py
+                projet.addMapLayer(c[k], False)
+                g.addLayer(c[k])
     return racine
 
 
@@ -434,14 +444,14 @@ def themes(projet, racine, c):
     modele = QgsLayerTreeModel(racine)
     collection = projet.mapThemeCollection()
     for nom, cles in THEMES.items():
-        visibles = {c[k].id() for k in cles}
+        visibles = {c[k].id() for k in cles if k in c}
         for n in racine.findLayers():
             n.setItemVisibilityChecked(n.layerId() in visibles)
         for g in racine.findGroups():
             g.setItemVisibilityChecked(True)
         collection.insert(nom, QgsMapThemeCollection.createThemeFromCurrentState(racine, modele))
     # état affiché à l'ouverture : la carte de la fiche, plus les zones à dessiner
-    visibles = {c[k].id() for k in THEMES["Zone sheet – main map"] + ["perso"]}
+    visibles = {c[k].id() for k in THEMES["Zone sheet – main map"] + ["perso"] if k in c}
     for n in racine.findLayers():
         n.setItemVisibilityChecked(n.layerId() in visibles)
     for g in racine.findGroups():
@@ -729,13 +739,22 @@ def fiche(projet, c):
         (nombre("nb_stationnements"), "slow passages over a cable\nor pipeline (30 min or more)", BLEU),
         (nombre("nb_rencontres"), "ship-to-ship encounters\n(2 hours or more)", VERT_EAU),
     ]
+    if "radar" in c:
+        tuiles.insert(5, (nombre("nb_radar_sans_ais"),
+                          "radar detections without AIS\n(Sentinel-1, wind farms excluded)", ENCRE))
+        tuiles.append(("[% if(\"part_radar_recus\" IS NULL, '–', "
+                       "format_number(\"part_radar_recus\" * 100, 0, 'en') || ' %') %]",
+                       "of radar-seen vessels received\nby the shore AIS network", "#c9c6bf"))
+    # 4 lignes de 14,5 mm, ou 5 de 12 mm quand le radar ajoute ses deux chiffres
+    lignes_par_colonne = (len(tuiles) + 1) // 2
+    pas = 12 if lignes_par_colonne > 4 else 14.5
     for i, (valeur, libelle, couleur) in enumerate(tuiles):
-        x = 12 if i < 4 else 63
-        y = 197 + (i % 4) * 14.5
-        rectangle(mise, x, y + 0.6, 1.1, 11.8, couleur)
-        texte(mise, valeur, x + 3, y - 0.4, 45, 7,
-              format_texte(15, ORANGE if couleur == ORANGE else ENCRE, gras=True))
-        texte(mise, libelle, x + 3, y + 6.4, 46, 7, format_texte(6.2, ENCRE_2))
+        x = 12 if i < lignes_par_colonne else 63
+        y = 196.5 + (i % lignes_par_colonne) * pas
+        rectangle(mise, x, y + 0.6, 1.1, pas - 2, couleur)
+        texte(mise, valeur, x + 3, y - 0.6, 45, 6.5,
+              format_texte(14 if pas < 14 else 15, ORANGE if couleur == ORANGE else ENCRE, gras=True))
+        texte(mise, libelle, x + 3, y + 5.2, 46, 6.5, format_texte(6.0, ENCRE_2))
 
     # graphique des silences de la zone (SVG préparé par 06_export_gpkg.py)
     texte(mise, "WHERE THE AIS SILENCES COME FROM", 118, 191, 80, 4,
@@ -759,8 +778,9 @@ def fiche(projet, c):
     legende.setTitle("")
     racine = legende.model().rootGroup()
     racine.removeAllChildren()
-    for k in ("inexpl", "sauts", "stationnement", "rencontre", "infra_fiche", "lacunes", "zee"):
-        racine.addLayer(c[k])
+    for k in ("inexpl", "sauts", "stationnement", "rencontre", "radar", "infra_fiche", "lacunes", "zee"):
+        if k in c:
+            racine.addLayer(c[k])
     legende.setColumnCount(2)
     legende.setSplitLayer(True)
     legende.setSymbolWidth(5.5)
@@ -788,8 +808,9 @@ def fiche(projet, c):
     texte(mise,
           "Data: Danish Maritime Authority (AIS) · Flanders Marine Institute, Marine Regions (EEZ, CC BY 4.0) · "
           "Eurostat GISCO (© EuroGeographics) · EMODnet Human Activities and BSH (CC BY 4.0) · TeleGeography "
-          "(CC BY-NC-SA 3.0) · © OpenStreetMap contributors (ODbL).",
-          12, 274.5, 186, 7, format_texte(5.6, ENCRE_3))
+          "(CC BY-NC-SA 3.0) · © OpenStreetMap contributors (ODbL) · Radar detections: Powered by Global "
+          "Fishing Watch (CC BY-NC 4.0).",
+          12, 274.5, 186, 8, format_texte(5.6, ENCRE_3))
     texte(mise, "Independent portfolio project  ·  Jaurès Daa-Hingbanon, GIS analyst", 12, 284, 120, 4,
           format_texte(5.8, ENCRE_2, gras=True))
     texte(mise, "Sheet [% @atlas_featurenumber %] / [% @atlas_totalfeatures %]", 150, 284, 48, 4,

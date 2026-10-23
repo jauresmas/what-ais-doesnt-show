@@ -18,3 +18,7 @@ donnees/produites/traces.gpkg
 
 # Copies de test (reproduction des plantages de QGIS)
 .repro/
+
+# Jeton d'API Global Fishing Watch : reste sur le poste
+.gfw_token
+gfw_token.txt

@@ -10,6 +10,7 @@ Toutes les données d'entrée sont ouvertes. Les téléchargements bruts sont co
 | Pipelines, câbles électriques et de données allemands, parcs éoliens en mer | EMODnet Human Activities (BSH CONTIS pour les câbles allemands) | WFS `ows.emodnet-humanactivities.eu` | CC BY 4.0 (conditions d'utilisation EMODnet), citer EMODnet et le BSH | Couche infrastructures |
 | Câbles de télécommunication | TeleGeography, Submarine Cable Map | API `submarinecablemap.com` | CC BY-NC-SA 3.0 : usage non commercial, compatible avec ce projet de démonstration | Couche infrastructures |
 | Câbles et pipelines sous-marins, zones de mouillage | Contributeurs OpenStreetMap (balisage OpenSeaMap) | API Overpass | ODbL 1.0 | Couche infrastructures, abris |
+| Détections radar Sentinel-1, appariées ou non à l'AIS, 13–19 octobre 2026 | Global Fishing Watch, jeu `public-global-sar-presence` (v5.0) | API v3 4Wings, jeton personnel (non versionné) | CC BY-NC 4.0 : usage non commercial, mention « Powered by Global Fishing Watch » | Contrôle indépendant de la couverture et des silences |
 | Préfixes MID (pavillon déduit du MMSI) | Liste UIT, telle que tabulée sur Wikipédia | Source wiki de l'article | CC BY-SA 4.0 | Pavillon des navires |
 
 ## Limites connues

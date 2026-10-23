@@ -136,3 +136,32 @@ Navires de servitude exclus. Les épisodes des navires de type « autre ou incon
 | 3 | 1 |
 
 Mailles H3 de résolution 5 totalisant au moins 50 heures-navire et 10 navires dans la semaine.
+
+## 9. Contrôle indépendant par radar satellitaire (Sentinel-1, Global Fishing Watch)
+
+**13 passages de Sentinel-1** sur la semaine, **2 373 détections** de navires, dont 238 sans AIS correspondant (10,0 %).
+
+Validation de la couverture : les navires vus au radar et identifiés par Global Fishing Watch étaient-ils reçus par le réseau danois au même instant ?
+
+| Couverture de la maille | Navires vus au radar | Reçus par le réseau danois | Part reçue |
+|---|---:|---:|---|
+| Reliable | 1 775 | 1 762 | 99,3 % |
+| Degraded | 91 | 74 | 81,3 % |
+| Not enough traffic | 56 | 40 | 71,4 % |
+| Poor | 177 | 91 | 51,4 % |
+
+La part reçue suit les classes de la carte de couverture : une source qui ne doit rien à l'AIS côtier confirme la mesure.
+
+Détections sans AIS :
+
+| Catégorie | Détections |
+|---|---:|
+| radar seul, eaux bien couvertes | 72 |
+| navire AIS danois à moins de 1,5 km | 60 |
+| eaux mal couvertes par le réseau côtier | 52 |
+| structure fixe probable (parc éolien) | 28 |
+| navire en silence AIS à cet instant | 26 |
+
+Sur les silences inexpliqués, 3 ont eu lieu pendant un passage du satellite ; pour 1 d'entre eux, une détection sans AIS se trouve à moins de 5 km de la position supposée du navire. Une détection « radar seul » n'est pas une infraction : bien des navires assez grands pour être vus au radar ne sont pas tenus d'émettre en AIS (plaisance, pêche de moins de 15 m, petits navires de servitude).
+
+*Détections radar : Powered by Global Fishing Watch (CC BY-NC 4.0).*

@@ -22,7 +22,7 @@ from qgis.core import (
     QgsProcessingAlgorithm, QgsProcessingException, QgsProcessingOutputNumber,
     QgsProcessingParameterBoolean, QgsProcessingParameterFeatureSource,
     QgsProcessingParameterFileDestination, QgsProcessingParameterString, QgsProject,
-    QgsSingleSymbolRenderer, QgsVectorLayer,
+    QgsSingleSymbolRenderer, QgsVectorLayer, NULL,
 )
 
 MISE_EN_PAGE = "Zone sheet"
@@ -41,6 +41,7 @@ CHAMPS = [  # champs lus par la mise en page « Zone sheet »
     ("nb_inexpliquees", "integer"), ("nav_inexpliquees", "integer"), ("nav_mmsi_partage", "integer"),
     ("nb_stationnements", "integer"), ("nav_stationnements", "integer"), ("nb_rencontres", "integer"),
     ("part_couverte", "double"), ("graphique", "string"),
+    ("nb_radar_sans_ais", "integer"), ("part_radar_recus", "double"),
 ]
 
 
@@ -139,6 +140,16 @@ def chiffres(zone, projet, feedback):
     fiables = {f["h3"] for f in zone.entites(couverture) if f["classe"] == "Reliable"}
     total = sum(heures.values())
     c["part_couverte"] = sum(h for k, h in heures.items() if k in fiables) / total if total else None
+
+    # détections radar Sentinel-1 (couche présente si 08_sar_gfw.py a tourné) : sans AIS hors
+    # structures fixes probables, et part des navires vus au radar que le réseau côtier recevait
+    radar = couche_projet(projet, "detection_radar", obligatoire=False)
+    if radar:
+        dedans = [f for f in zone.entites(radar) if zone.contient(radar, f.geometry())]
+        c["nb_radar_sans_ais"] = sum(f["detections"] for f in dedans if not f["apparie"]
+                                     and f["categorie"] != "structure fixe probable (parc éolien)")
+        juges = [f["recu_par_reseau"] for f in dedans if f["recu_par_reseau"] not in (None, NULL)]
+        c["part_radar_recus"] = sum(1 for v in juges if v) / len(juges) if juges else None
     return c, comptes
 
 

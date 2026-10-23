@@ -132,6 +132,31 @@ def rapport():
         SELECT nb_signaux AS "Signaux présents", count(*)::int AS "Mailles"
         FROM indic.score GROUP BY 1 ORDER BY 1""")
 
+    sar = None
+    if requete("SELECT to_regclass('indic.sar_detection') IS NOT NULL AS ok")["ok"][0]:
+        sar = requete("""
+            SELECT count(DISTINCT instant)::int AS passages,
+                   sum(detections) FILTER (WHERE apparie)::int AS appariees,
+                   sum(detections) FILTER (WHERE NOT apparie)::int AS non_appariees
+            FROM indic.sar_detection""").iloc[0]
+        validation = requete("""
+            SELECT classe_couverture AS "Couverture de la maille", count(*)::int AS "Navires vus au radar",
+                   count(*) FILTER (WHERE recu_par_reseau)::int AS "Reçus par le réseau danois",
+                   (count(*) FILTER (WHERE recu_par_reseau))::float / count(*) AS part
+            FROM indic.sar_detection WHERE apparie AND recu_par_reseau IS NOT NULL
+            GROUP BY 1 ORDER BY 4 DESC""")
+        validation["Part reçue"] = validation.pop("part").map(pourcent)
+        sans_ais = requete("""
+            SELECT categorie AS "Catégorie", sum(detections)::int AS "Détections"
+            FROM indic.sar_detection WHERE NOT apparie GROUP BY 1 ORDER BY 2 DESC""")
+        inexpl = requete("""
+            WITH p AS (SELECT DISTINCT instant FROM indic.sar_detection)
+            SELECT count(*) FILTER (WHERE EXISTS (SELECT 1 FROM p WHERE p.instant > c.debut
+                                                  AND p.instant < c.fin))::int AS pendant,
+                   (SELECT count(DISTINCT coupure_id) FROM indic.sar_detection s JOIN indic.coupure k
+                      ON k.id = s.coupure_id WHERE k.categorie = 'coupure inexpliquée')::int AS vues
+            FROM indic.coupure c WHERE c.categorie = 'coupure inexpliquée'""").iloc[0]
+
     nb_navires = requete("SELECT count(*) AS n FROM ais.navire")["n"][0]
     debut, fin = config.DEBUT.strftime("%d/%m/%Y"), config.FIN.strftime("%d/%m/%Y")
 
@@ -201,6 +226,26 @@ Navires de servitude exclus. Les épisodes des navires de type « autre ou incon
 {tableau(score)}
 
 Mailles H3 de résolution 5 totalisant au moins 50 heures-navire et 10 navires dans la semaine.
+"""
+    if sar is not None:
+        md += f"""
+## 9. Contrôle indépendant par radar satellitaire (Sentinel-1, Global Fishing Watch)
+
+**{fr(sar.passages)} passages de Sentinel-1** sur la semaine, **{fr(sar.appariees + sar.non_appariees)} détections** de navires, dont {fr(sar.non_appariees)} sans AIS correspondant ({pourcent(sar.non_appariees / (sar.appariees + sar.non_appariees))}).
+
+Validation de la couverture : les navires vus au radar et identifiés par Global Fishing Watch étaient-ils reçus par le réseau danois au même instant ?
+
+{tableau(validation)}
+
+La part reçue suit les classes de la carte de couverture : une source qui ne doit rien à l'AIS côtier confirme la mesure.
+
+Détections sans AIS :
+
+{tableau(sans_ais)}
+
+Sur les silences inexpliqués, {fr(inexpl.pendant)} ont eu lieu pendant un passage du satellite ; pour {fr(inexpl.vues)} d'entre eux, une détection sans AIS se trouve à moins de 5 km de la position supposée du navire. Une détection « radar seul » n'est pas une infraction : bien des navires assez grands pour être vus au radar ne sont pas tenus d'émettre en AIS (plaisance, pêche de moins de 15 m, petits navires de servitude).
+
+*Détections radar : Powered by Global Fishing Watch (CC BY-NC 4.0).*
 """
     sortie = config.DOCS / "rapport_qualite.md"
     sortie.write_text(md, encoding="utf-8")

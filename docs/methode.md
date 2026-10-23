@@ -82,6 +82,24 @@ Pour chaque maille H3 de résolution 5 (≈ 250 km²) qui totalise au moins 50 h
 
 Le rang centile rend l'indice insensible aux valeurs extrêmes et lisible (« cette maille est dans les 10 % les plus marquées pour ce signal »). L'indice est un outil de tri : il dit où regarder en premier, pas ce qui s'y est passé.
 
-## 8. Confidentialité
+## 8. Contrôle indépendant par radar satellitaire (`08_sar_gfw.py`, `sql/12_sar.sql`)
+
+Le radar Sentinel-1 voit les navires, qu'ils émettent ou non. Global Fishing Watch publie ses détections et les rapproche de l'AIS mondial (stations côtières et satellites) : une détection « non appariée » est un navire vu par le radar sans émission AIS correspondante. Les détections sont récupérées par l'API 4Wings (jeu `public-global-sar-presence`, mailles de 0,01°, résolution horaire) sur l'aire et la semaine d'étude.
+
+**Instant du passage.** L'API date les détections à l'heure près ; un navire à 12 nœuds parcourt 22 km en une heure. Pour un navire détecté une seule fois dans la semaine, l'horodatage d'entrée égale celui de sortie : c'est l'instant de l'image. Dans un même passage, ces instants tiennent en moins de deux minutes, et leur médiane date tout le passage à la minute près.
+
+**Validation de la couverture.** Pour chaque navire vu au radar et identifié par Global Fishing Watch, présent dans nos données de classe A, on vérifie si le réseau danois l'a reçu à 5 minutes et 3 km près de l'instant de l'image. La part reçue, par classe de couverture, contrôle la carte de couverture avec une source qui ne doit rien à l'AIS côtier.
+
+**Détections sans AIS.** Chacune reçoit la première catégorie qui s'applique :
+
+1. structure fixe probable : à moins d'un kilomètre d'un parc éolien ;
+2. navire en silence AIS à cet instant : à moins de 5 km de la position supposée d'un navire en silence (interpolée sur son trajet) ;
+3. navire AIS danois à moins de 1,5 km : un navire de classe A était reçu tout près au même instant ;
+4. eaux mal couvertes par le réseau côtier ;
+5. radar seul, eaux bien couvertes.
+
+Limites : Sentinel-1 ne voit pas bien les navires de moins de 15 à 20 m, qui ne sont souvent pas tenus d'émettre en AIS ; chaque zone n'est imagée que tous les quelques jours ; l'API ne donne pas l'emprise des images, si bien qu'une absence de détection ne prouve rien.
+
+## 9. Confidentialité
 
 Les livrables publics (cartes, fiche de zone, page web) n'affichent que des agrégats par maille ou par zone, et des navires pseudonymisés (empreinte du MMSI salée, le sel restant sur le poste). Aucun navire n'est présenté comme fautif : les indicateurs signalent des écarts au comportement attendu, pas des infractions.
