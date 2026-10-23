@@ -653,7 +653,7 @@ def vues_analyse(projet, c):
 
     rectangle(mise, 12, 197, 273, 0.25, "#c9c6bf")
     texte(mise,
-          "Data: Danish Maritime Authority (AIS) · Flanders Marine Institute, Marine Regions (EEZ, CC BY 4.0) · "
+          "Sources: Danish Maritime Authority (AIS) · Flanders Marine Institute, Marine Regions (EEZ, CC BY 4.0) · "
           "Eurostat GISCO (© EuroGeographics) · OpenStreetMap contributors (ODbL). "
           "Projection ETRS89-LAEA (EPSG:3035).", 12, 198.5, 200, 5, format_texte(5.6, ENCRE_3))
     texte(mise, "Independent portfolio project  ·  Jaurès Daa-Hingbanon, GIS analyst", 185, 198.5, 100, 5,
@@ -798,15 +798,14 @@ def fiche(projet, c):
     # pied de page
     rectangle(mise, 12, 259.5, 186, 0.25, "#c9c6bf")
     texte(mise,
-          "<b>Method.</b> Positions of class A vessels from the Danish shore AIS network, cleaned and thinned "
-          "to one per minute. Shore coverage is measured from the traffic itself on an H3 grid, counting vessels "
-          "lost while crossing each cell. A silence of 2 hours or more is called unexplained only after ruling out, "
-          "in order: service or state vessel, exit from the area, inland waterway, port stay, reception gap, "
-          "possible port call and possible trip out of coverage. Indicators flag deviations from expected "
-          "behaviour, not offences; vessels are pseudonymised.",
+          "<b>About these figures.</b> One week of positions broadcast by commercial vessels (AIS class A) and "
+          "received by Denmark's coastal stations. A silence is a gap of 2 hours or more between two positions of "
+          "the same vessel; it is called unexplained only when no ordinary cause fits (port stay, poor coastal "
+          "reception, leaving the area…). These are signals worth a closer look, not proof of wrongdoing, and no "
+          "vessel is named. Full method: github.com/jauresmas/what-ais-doesnt-show",
           12, 261, 186, 13, format_texte(6.1, ENCRE_2), html=True)
     texte(mise,
-          "Data: Danish Maritime Authority (AIS) · Flanders Marine Institute, Marine Regions (EEZ, CC BY 4.0) · "
+          "Sources: Danish Maritime Authority (AIS) · Flanders Marine Institute, Marine Regions (EEZ, CC BY 4.0) · "
           "Eurostat GISCO (© EuroGeographics) · EMODnet Human Activities and BSH (CC BY 4.0) · TeleGeography "
           "(CC BY-NC-SA 3.0) · © OpenStreetMap contributors (ODbL) · Radar detections: Powered by Global "
           "Fishing Watch (CC BY-NC 4.0).",

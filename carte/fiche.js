@@ -19,9 +19,10 @@ Object.assign(T.en, {
   fRadar: "radar detections without AIS (Sentinel-1, wind farms excluded)", fRadarRecus: "of radar-seen vessels received by the shore network",
   hGraphe: "Where the AIS silences come from", hLecture: "How to read it",
   lecture: "A silence is a gap of 2 hours or more between two positions of the same vessel. It is called unexplained only once every ordinary cause has been ruled out, in order: service or state vessel, exit from the area, inland waterway, port stay, reception gap, possible port call and possible trip out of coverage.",
-  methode: "Method. Positions of class A vessels from the Danish shore AIS network, cleaned and thinned to one per minute. Shore coverage is measured from the traffic itself on an H3 grid. A silence belongs to the area where it starts. Indicators flag deviations from expected behaviour, not offences; vessels are pseudonymised.",
-  calculExact: "Figures from the processing chain (PostGIS), identical to the QGIS atlas.",
-  calculNav: "Figures computed in the browser with the rules of the QGIS tool; vessel count approximated from H3 cells (≈ 36 km²).",
+  methode: "About these figures. One week of positions broadcast by commercial vessels (AIS class A) and received by Denmark's coastal stations. A silence is counted in the area where it begins. These are signals worth a closer look, not proof of wrongdoing, and no vessel is named. Full method and code: github.com/jauresmas/what-ais-doesnt-show.",
+  calculExact: "Figures from the full processing chain.",
+  calculNav: "Figures computed in your browser with the same rules; vessel count estimated.",
+  sources: "Sources:",
   genere: "Generated on", depuis: "from the web map", projet: "Independent portfolio project · Jaurès Daa-Hingbanon, GIS analyst",
   projection: "Web Mercator", nm: "NM",
 });
@@ -42,9 +43,10 @@ Object.assign(T.fr, {
   fRadar: "détections radar sans AIS (Sentinel-1, hors parcs éoliens)", fRadarRecus: "des navires vus au radar reçus par le réseau côtier",
   hGraphe: "D'où viennent les silences AIS", hLecture: "Comment lire",
   lecture: "Un silence est un écart de 2 heures ou plus entre deux positions d'un même navire. Il n'est dit inexpliqué qu'une fois écartées, dans l'ordre, toutes les causes ordinaires : navire de servitude ou d'État, sortie de la zone, navigation intérieure, séjour au port, trou de réception, escale possible et sortie de couverture possible.",
-  methode: "Méthode. Positions des navires de classe A du réseau AIS côtier danois, nettoyées et ramenées à une par minute. La couverture côtière est mesurée à partir du trafic lui-même sur une grille H3. Un silence appartient à la zone où il commence. Les indicateurs signalent des écarts au comportement attendu, pas des infractions ; les navires sont pseudonymisés.",
-  calculExact: "Chiffres de la chaîne de traitement (PostGIS), identiques à l'atlas QGIS.",
-  calculNav: "Chiffres calculés dans le navigateur avec les règles de l'outil QGIS ; nombre de navires estimé à partir des mailles H3 (≈ 36 km²).",
+  methode: "À propos de ces chiffres. Une semaine de positions émises par les navires de commerce (AIS classe A) et reçues par les stations côtières danoises. Un silence est compté dans la zone où il commence. Ce sont des signaux à examiner, pas des preuves d'infraction, et aucun navire n'est nommé. Méthode complète et code : github.com/jauresmas/what-ais-doesnt-show.",
+  calculExact: "Chiffres issus de la chaîne de traitement complète.",
+  calculNav: "Chiffres calculés dans votre navigateur avec les mêmes règles ; nombre de navires estimé.",
+  sources: "Sources :",
   genere: "Produite le", depuis: "depuis la carte web", projet: "Projet personnel de démonstration · Jaurès Daa-Hingbanon, géomaticien",
   projection: "Web Mercator", nm: "milles",
   "Danish Straits & Bornholm Basin": "Détroits danois et bassin de Bornholm", "Study area": "Aire d'étude",
@@ -357,8 +359,9 @@ function rendreFeuille() {
       <div class="f-bloc"><h2>${t("hGraphe")}</h2>${graphe(R.comptes)}<p class="f-lecture">${t("lecture")}</p></div>
     </section>
     <footer class="f-pied">
-      <p class="f-methode">${t("methode").replace(/^([^.]+\.)/, "<b>$1</b>")} ${R.exact ? t("calculExact") : t("calculNav")}</p>
-      <p class="f-sources">Data: Danish Maritime Authority (AIS) · Marine Regions (CC BY 4.0) · Eurostat GISCO (© EuroGeographics) · EMODnet and BSH (CC BY 4.0) · TeleGeography (CC BY-NC-SA 3.0) · © OpenStreetMap contributors · Radar detections: Powered by Global Fishing Watch (CC BY-NC 4.0) · ${t("projection")}.</p>
+      <p class="f-methode">${t("methode").replace(/^([^.]+\.)/, "<b>$1</b>").replace("github.com/jauresmas/what-ais-doesnt-show",
+        '<a href="https://github.com/jauresmas/what-ais-doesnt-show">github.com/jauresmas/what-ais-doesnt-show</a>')} ${R.exact ? t("calculExact") : t("calculNav")}</p>
+      <p class="f-sources">${t("sources")} Danish Maritime Authority (AIS) · Marine Regions (CC BY 4.0) · Eurostat GISCO (© EuroGeographics) · EMODnet and BSH (CC BY 4.0) · TeleGeography (CC BY-NC-SA 3.0) · © OpenStreetMap contributors · Radar detections: Powered by Global Fishing Watch (CC BY-NC 4.0) · ${t("projection")}.</p>
       <div class="f-signature"><span>${t("projet")}</span><span>${t("genere")} ${date} ${t("depuis")}</span></div>
     </footer>`;
   const titre = document.querySelector(".f-titre");

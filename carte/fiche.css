@@ -84,6 +84,7 @@ body.fiche-calcul, body.fiche-ouverte { overflow: hidden; }
 
 .f-pied { margin-top: auto; padding-top: 10px; border-top: 1px solid #e6e3dc; }
 .f-methode b { color: var(--encre); }
+.f-methode a { color: inherit; white-space: nowrap; text-decoration: none; border-bottom: 1px solid #cfcbc3; }
 .f-methode { margin: 0 0 5px; font-size: 9px; color: var(--encre-2); line-height: 1.45; }
 .f-sources { margin: 0 0 8px; font-size: 7.6px; color: var(--encre-3); line-height: 1.4; }
 .f-signature { display: flex; justify-content: space-between; gap: 12px; font-size: 8.6px; font-weight: 600; color: var(--encre); }
