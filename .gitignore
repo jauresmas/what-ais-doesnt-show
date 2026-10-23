@@ -1,0 +1,20 @@
+# Instance PostgreSQL locale et son journal
+.pgdata/
+postgresql.log
+
+# Données brutes : retéléchargées par les scripts 01 et 03
+donnees/brutes/
+
+# Correspondance entre MMSI et pseudonymes : reste sur le poste
+donnees/produites/sel_pseudonymes.txt
+
+__pycache__/
+*.part
+
+# Traces des navires (58 Mo) : régénérées par scripts/06_export_gpkg.py
+donnees/produites/traces.gpkg
+*.gpkg-wal
+*.gpkg-shm
+
+# Copies de test (reproduction des plantages de QGIS)
+.repro/
