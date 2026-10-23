@@ -1,0 +1,41 @@
+{
+ "nb_silences": 3880,
+ "nb_reception": 496,
+ "nb_inexpliquees": 11,
+ "nav_inexpliquees": 10,
+ "nav_sauts": 53,
+ "nav_mmsi_partage": 10,
+ "nb_stationnements": 121,
+ "nav_stationnements": 42,
+ "nb_rencontres": 47,
+ "nb_radar_sans_ais": 210,
+ "part_radar_recus": 0.937,
+ "nb_navires": 2894,
+ "part_couverte": 0.913,
+ "validation_radar": [
+  {
+   "classe": "Reliable",
+   "n": 1775,
+   "recus": 1762,
+   "part": 0.993
+  },
+  {
+   "classe": "Degraded",
+   "n": 91,
+   "recus": 74,
+   "part": 0.813
+  },
+  {
+   "classe": "Not enough traffic",
+   "n": 56,
+   "recus": 40,
+   "part": 0.714
+  },
+  {
+   "classe": "Poor",
+   "n": 177,
+   "recus": 91,
+   "part": 0.514
+  }
+ ]
+}

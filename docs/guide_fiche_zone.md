@@ -6,6 +6,8 @@ L'outil **Produire une fiche de zone** fabrique, pour n'importe quelle zone mari
 
 ![Fiche produite par l'outil pour le bassin d'Arkona](../sorties/fiches/zone-sheet_arkona-basin.png)
 
+> **Sans QGIS** : la [carte web](https://jauresmas.github.io/what-ais-doesnt-show/carte/) produit aussi une fiche, en français ou en anglais. Dans le panneau **Fiche de zone**, choisir une zone (aire d'étude ou ZEE), en dessiner une sur la carte ou importer un fichier GeoJSON, puis **Créer la fiche**. Le titre se modifie d'un clic ; **Imprimer ou enregistrer en PDF** donne une page A4. Les chiffres des zones prédéfinies sont ceux de la chaîne ; pour une zone libre, ils sont calculés dans le navigateur avec les règles de l'outil (§ 5), le nombre de navires étant estimé à partir des mailles H3. Le bouton **Copier le lien** permet de rouvrir la même fiche plus tard ou de l'envoyer.
+
 ---
 
 ## 1. Avant de commencer

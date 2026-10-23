@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What AIS doesn't show — web map</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Shore-based AIS blind spots and unexplained silences in the Danish Straits and the Bornholm Basin, 13–19 October 2026. Open data, independent portfolio project.">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="fiche.css">
+<style>
+  :root {
+    --encre: #1d1d1b; --encre-2: #52514e; --encre-3: #8a877f; --filet: #e3e0d9;
+    --fond: #fbfaf8; --mer: #edf1f3; --terre: #e7e3db;
+    --orange: #eb6834; --violet: #4a3aa7; --bleu: #2a78d6; --vert: #1baf7a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--mer); color: var(--encre);
+    font: 14px/1.45 Inter, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  #app { display: flex; height: 100%; }
+  #panneau { width: 380px; flex: none; height: 100%; overflow-y: auto; background: var(--fond);
+    border-right: 1px solid var(--filet); padding: 22px 22px 28px; }
+  #carte { flex: 1; height: 100%; }
+  .entete { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .kicker { color: var(--orange); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  h1 { font-size: 26px; line-height: 1.1; margin: 6px 0 4px; letter-spacing: -.01em; }
+  .sous-titre { color: var(--encre-2); margin: 0 0 14px; }
+  .langue { display: flex; border: 1px solid var(--filet); border-radius: 6px; overflow: hidden; flex: none; }
+  .langue button { border: 0; background: transparent; padding: 4px 9px; font: inherit; font-size: 12px;
+    color: var(--encre-2); cursor: pointer; }
+  .langue button[aria-pressed="true"] { background: var(--encre); color: #fff; }
+  .chapo { color: var(--encre-2); margin: 0 0 18px; padding-bottom: 16px; border-bottom: 1px solid var(--filet); }
+  h2 { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--encre-2); margin: 20px 0 10px; }
+  .tuiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+  .tuile { border-left: 3px solid #c9c6bf; padding: 1px 0 1px 9px; }
+  .tuile b { display: block; font-size: 22px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .tuile span { display: block; font-size: 12px; color: var(--encre-2); line-height: 1.3; }
+  .tuile.orange { border-color: var(--orange); } .tuile.orange b { color: var(--orange); }
+  .tuile.violet { border-color: var(--violet); } .tuile.bleu { border-color: var(--bleu); }
+  .tuile.vert { border-color: var(--vert); } .tuile.encre { border-color: var(--encre); }
+  .barres { display: grid; gap: 7px; }
+  .barre { display: grid; grid-template-columns: 112px 1fr 46px; align-items: center; gap: 8px; font-size: 12px; color: var(--encre-2); }
+  .barre .piste { display: block; height: 9px; background: #ecebe7; border-radius: 3px; overflow: hidden; }
+  .barre .rempli { display: block; height: 100%; background: #9aa7b1; border-radius: 3px; }
+  .barre b { text-align: right; color: var(--encre); font-variant-numeric: tabular-nums; }
+  .note { font-size: 12px; color: var(--encre-3); margin: 8px 0 0; }
+  .couches { display: grid; gap: 4px; }
+  .couche { display: grid; grid-template-columns: 18px 22px 1fr; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; padding: 3px 0; }
+  .couche input { margin: 0; accent-color: var(--encre); }
+  .symbole { width: 22px; height: 14px; display: inline-block; }
+  .pied { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--filet); font-size: 12px; color: var(--encre-2); }
+  .pied a { color: var(--bleu); }
+  .liens { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 10px; }
+  .lieu { font-size: 11px; color: #6c8495; font-style: italic; letter-spacing: .04em; pointer-events: none;
+    text-shadow: 0 0 2px var(--mer), 0 0 2px var(--mer), 0 0 3px var(--mer); white-space: nowrap; }
+  .lieu.pays { font-style: normal; color: #a39b8e; letter-spacing: .25em; font-size: 11px; text-shadow: none; }
+  .lieu.ville { font-style: normal; color: #3d3d3a; text-shadow: 0 0 2px #fff, 0 0 2px #fff; }
+  .maplibregl-popup-content { font: 13px/1.4 "Segoe UI", system-ui, sans-serif; color: var(--encre); padding: 10px 12px; border-radius: 6px; }
+  .maplibregl-popup-content h3 { margin: 0 0 4px; font-size: 13px; }
+  .maplibregl-popup-content dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 1px 10px; }
+  .maplibregl-popup-content dt { color: var(--encre-3); } .maplibregl-popup-content dd { margin: 0; }
+  @media (max-width: 760px) {
+    #app { flex-direction: column-reverse; }
+    #panneau { width: 100%; height: 48%; border-right: 0; border-top: 1px solid var(--filet); padding: 16px 16px 24px; }
+    #carte { height: 52%; flex: none; }
+    h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="panneau">
+    <div class="entete">
+      <div class="kicker" data-t="kicker">Shore-based AIS · Open data</div>
+      <div class="langue" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="fr" aria-pressed="false">FR</button>
+      </div>
+    </div>
+    <h1>What AIS doesn't show</h1>
+    <p class="sous-titre" data-t="sousTitre">Danish Straits &amp; Bornholm Basin · 13–19 October 2026</p>
+    <p class="chapo" data-t="chapo">Where the coastal AIS network loses vessels, which silences nothing ordinary explains, and what a satellite radar sees that AIS does not.</p>
+
+    <section class="fiche-panneau" aria-labelledby="hFiche">
+      <h2 id="hFiche" data-t="hFiche">Zone sheet</h2>
+      <p class="note" data-t="noteFiche">Pick an area, draw one or import a GeoJSON file.</p>
+      <div class="fiche-ligne">
+        <select id="zoneChoix" aria-label="Zone"></select>
+        <button type="button" id="btnFiche" class="primaire" data-t="btnFiche">Create the sheet</button>
+      </div>
+      <div class="fiche-ligne">
+        <button type="button" id="btnDessiner" data-t="btnDessiner">Draw an area</button>
+        <label class="bouton"><span data-t="btnImporter">Import GeoJSON</span><input type="file" id="fichierZone" accept=".geojson,.json,application/geo+json" hidden></label>
+      </div>
+      <div id="aideDessin" class="aide-dessin" hidden>
+        <p data-t="aideDessin">Click to add points.</p>
+        <div class="fiche-ligne"><button type="button" id="btnTerminer" class="primaire" data-t="terminer">Close the area</button><button type="button" id="btnAnnuler" data-t="annuler">Cancel</button></div>
+      </div>
+    </section>
+
+    <h2 data-t="hChiffres">Key figures</h2>
+    <div class="tuiles" id="tuiles"></div>
+
+    <h2 data-t="hRadar">Radar check of shore coverage</h2>
+    <div class="barres" id="barres"></div>
+    <p class="note" data-t="noteRadar">Vessels seen by Sentinel-1 and identified by Global Fishing Watch, received by the Danish network at the same minute, by coverage class of their cell.</p>
+
+    <h2 data-t="hCouches">Layers</h2>
+    <div class="couches" id="couches"></div>
+
+    <div class="pied">
+      <div class="liens">
+        <a href="https://github.com/jauresmas/what-ais-doesnt-show" data-t="lienDepot">Code and method on GitHub</a>
+        <a href="../sorties/fiches/zone-sheets.pdf" data-t="lienFiches">Zone sheets (PDF)</a>
+        <a href="https://github.com/jauresmas/what-ais-doesnt-show/blob/main/README.fr.md" data-t="lienFr">Version française du projet</a>
+      </div>
+      <p data-t="avertissement">Independent portfolio project. Indicators flag deviations from expected behaviour, not offences; vessels are pseudonymised.</p>
+      <p data-t="sources">Data: Danish Maritime Authority (AIS) · Marine Regions (CC BY 4.0) · Eurostat GISCO (© EuroGeographics) · EMODnet and BSH (CC BY 4.0) · TeleGeography (CC BY-NC-SA 3.0) · © OpenStreetMap contributors · Radar detections: Powered by <a href="https://globalfishingwatch.org">Global Fishing Watch</a> (CC BY-NC 4.0).</p>
+    </div>
+  </aside>
+  <div id="carte" role="region" aria-label="Map"></div>
+</div>
+<div id="fiche-attente" class="fiche-attente" hidden></div>
+<div id="fiche-ecran" class="fiche-ecran" hidden role="dialog" aria-modal="true" aria-label="Zone sheet">
+  <div id="fiche-outils" class="fiche-outils"></div>
+  <div id="feuille-cadre" class="feuille-cadre"><article id="feuille" class="feuille"></article></div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const T = {
+  en: {
+    kicker: "Shore-based AIS · Open data", sousTitre: "Danish Straits & Bornholm Basin · 13–19 October 2026",
+    chapo: "Where the coastal AIS network loses vessels, which silences nothing ordinary explains, and what a satellite radar sees that AIS does not.",
+    hChiffres: "Key figures", hRadar: "Radar check of shore coverage", hCouches: "Layers",
+    noteRadar: "Vessels seen by Sentinel-1 and identified by Global Fishing Watch, received by the Danish network at the same minute, by coverage class of their cell.",
+    lienDepot: "Code and method on GitHub", lienFiches: "Zone sheets (PDF)", lienFr: "Version française du projet",
+    avertissement: "Independent portfolio project. Indicators flag deviations from expected behaviour, not offences; vessels are pseudonymised.",
+    navires: "class A vessels tracked", silences: "AIS silences of 2 hours or more", reception: "explained by shore reception gaps",
+    inexpl: "unexplained: silent transits in well-covered waters", mmsi: "vessels whose MMSI is shared by two transmitters",
+    stat: "slow passages over a cable or pipeline", renc: "ship-to-ship encounters (2 h or more)", radar: "radar detections without AIS (wind farms excluded)",
+    Reliable: "Reliable", Degraded: "Degraded", Poor: "Poor", "Not enough traffic": "Not enough traffic",
+    gSignaux: "Signals", gContexte: "Context", gAnalyse: "Analyst views",
+    cInexpl: "Unexplained AIS silence", cMmsi: "MMSI shared by two transmitters", cStat: "Slow passage over a cable or pipeline",
+    cRenc: "Ship-to-ship encounter", cRadar: "Radar detection without AIS", cLacunes: "Poor shore AIS reception",
+    cTrafic: "Shipping density", cInfra: "Cables, pipelines, wind farms", cZee: "EEZ boundaries",
+    cCouv: "Shore AIS coverage (H3 cells)", cIndice: "Vigilance index (H3 cells)",
+    vessel: "Vessel", family: "Type", start: "Start", end: "End", duration: "Duration", distance: "Distance", speed: "Implied speed",
+    infra: "Infrastructure", category: "Category", coverage: "Shore coverage", time: "Satellite pass", h: "h", nm: "NM", kn: "kn", m: "m",
+    received: "Received at that minute", lost: "Vessels lost", index: "Index", signals: "Signals present", vessels: "Vessels",
+    nature: "Nature", "transit silencieux": "silent transit", "arrêt en mer": "stopped at sea", autre: "other",
+    "câble de télécommunication": "telecom cable", "câble électrique": "power cable",
+    "câble (usage non précisé)": "cable (use not specified)", pipeline: "pipeline",
+  },
+  fr: {
+    "câble de télécommunication": "câble de télécommunication", "câble électrique": "câble électrique",
+    "câble (usage non précisé)": "câble (usage non précisé)", pipeline: "pipeline",
+    "Radar only, well-covered waters": "radar seul, eaux bien couvertes",
+    "Danish AIS vessel within 1.5 km": "navire AIS danois à moins de 1,5 km",
+    "Poorly covered waters": "eaux mal couvertes par le réseau côtier",
+    "Near a vessel silent in AIS at that minute": "navire en silence AIS à cet instant",
+    Cargo: "Cargo", Tanker: "Pétrolier ou chimiquier", Passenger: "Passagers", Fishing: "Pêche",
+    "Service & authorities": "Service et autorités", "Other / unknown": "Autre ou inconnu",
+    kicker: "AIS côtier · Données ouvertes", sousTitre: "Détroits danois et bassin de Bornholm · 13–19 octobre 2026",
+    chapo: "Où le réseau AIS côtier perd les navires, quels silences rien d'ordinaire n'explique, et ce qu'un radar satellitaire voit que l'AIS ne montre pas.",
+    hChiffres: "Chiffres clés", hRadar: "Contrôle radar de la couverture côtière", hCouches: "Couches",
+    noteRadar: "Navires vus par Sentinel-1 et identifiés par Global Fishing Watch, reçus par le réseau danois à la même minute, selon la couverture de leur maille.",
+    lienDepot: "Code et méthode sur GitHub", lienFiches: "Fiches de zone (PDF, en anglais)", lienFr: "Présentation complète du projet",
+    avertissement: "Projet personnel de démonstration. Les indicateurs signalent des écarts au comportement attendu, pas des infractions ; les navires sont pseudonymisés.",
+    navires: "navires de classe A suivis", silences: "silences AIS de 2 heures ou plus", reception: "dus aux trous de réception côtière",
+    inexpl: "inexpliqués : transits silencieux en eaux bien couvertes", mmsi: "navires dont le MMSI est partagé par deux émetteurs",
+    stat: "passages lents au-dessus d'un câble ou d'un pipeline", renc: "rencontres en mer (2 h ou plus)", radar: "détections radar sans AIS (hors parcs éoliens)",
+    Reliable: "Fiable", Degraded: "Dégradée", Poor: "Mauvaise", "Not enough traffic": "Trafic insuffisant",
+    gSignaux: "Signaux", gContexte: "Contexte", gAnalyse: "Vues d'analyse",
+    cInexpl: "Silence AIS inexpliqué", cMmsi: "MMSI partagé par deux émetteurs", cStat: "Passage lent au-dessus d'un câble ou pipeline",
+    cRenc: "Rencontre en mer", cRadar: "Détection radar sans AIS", cLacunes: "Mauvaise réception AIS côtière",
+    cTrafic: "Densité du trafic", cInfra: "Câbles, pipelines, parcs éoliens", cZee: "Limites des ZEE",
+    cCouv: "Couverture AIS côtière (mailles H3)", cIndice: "Indice de vigilance (mailles H3)",
+    vessel: "Navire", family: "Type", start: "Début", end: "Fin", duration: "Durée", distance: "Distance", speed: "Vitesse implicite",
+    infra: "Infrastructure", category: "Catégorie", coverage: "Couverture côtière", time: "Passage du satellite", h: "h", nm: "milles", kn: "nœuds", m: "m",
+    received: "Reçus à cette minute", lost: "Navires perdus", index: "Indice", signals: "Signaux présents", vessels: "Navires",
+    nature: "Nature", "transit silencieux": "transit silencieux", "arrêt en mer": "arrêt en mer", autre: "autre",
+  },
+};
+let langue = "en";
+const t = (k) => (T[langue][k] ?? T.en[k] ?? k);
+const D = "donnees/";
+const fichiers = ["terre", "zone_etude", "limite_zee", "trafic", "lacunes", "couverture", "indice", "infrastructure",
+  "eolien", "silences_inexpliques", "mmsi_partages", "stationnements", "rencontres", "radar_sans_ais"];
+
+const LIEUX = [
+  ["Skagerrak", "Skagerrak", "mer", 9.9, 57.95], ["Kattegat", "Cattégat", "mer", 11.55, 56.85], ["Øresund", "Øresund", "mer", 12.72, 55.92],
+  ["Great Belt", "Grand Belt", "mer", 10.98, 55.42], ["Fehmarn Belt", "Belt de Fehmarn", "mer", 11.3, 54.6],
+  ["Arkona Basin", "Bassin d'Arkona", "mer", 13.55, 55.12], ["Bornholm Basin", "Bassin de Bornholm", "mer", 15.75, 55.3],
+  ["Pomeranian Bay", "Baie de Poméranie", "mer", 14.25, 54.2],
+  ["DENMARK", "DANEMARK", "pays", 9.55, 56.3], ["SWEDEN", "SUÈDE", "pays", 13.6, 56.9],
+  ["GERMANY", "ALLEMAGNE", "pays", 10.6, 54.05], ["POLAND", "POLOGNE", "pays", 16.0, 54.15],
+  ["Skagen", "Skagen", "ville", 10.59, 57.72], ["Gothenburg", "Göteborg", "ville", 11.97, 57.71],
+  ["Copenhagen", "Copenhague", "ville", 12.57, 55.68], ["Malmö", "Malmö", "ville", 13.0, 55.6],
+  ["Kiel", "Kiel", "ville", 10.13, 54.32], ["Rostock", "Rostock", "ville", 12.13, 54.09], ["Rønne", "Rønne", "ville", 14.7, 55.1],
+];
+const etiquettes = [];
+
+// symboles dessinés (pas de planche d'icônes externe)
+const DENSITE = Math.max(1, Math.round(window.devicePixelRatio || 1));
+function image(dessin, taille = 22) {
+  const c = document.createElement("canvas");
+  c.width = c.height = taille * DENSITE; const x = c.getContext("2d"); x.scale(DENSITE, DENSITE); dessin(x, taille);
+  return { width: c.width, height: c.height, data: x.getImageData(0, 0, c.width, c.height).data };
+}
+const losange = (x, s) => { x.beginPath(); x.moveTo(s/2, 3); x.lineTo(s-4, s/2); x.lineTo(s/2, s-3); x.lineTo(4, s/2); x.closePath();
+  x.fillStyle = "#2a78d6"; x.fill(); x.lineWidth = 1.6; x.strokeStyle = "#fff"; x.stroke(); };
+const carre = (x, s) => { x.lineWidth = 1.8; x.fillStyle = "#fff"; x.fillRect(5, 5, s-10, s-10); x.strokeStyle = "#52514e"; x.strokeRect(5, 5, s-10, s-10); };
+const hachure = (x, s) => { x.strokeStyle = "rgba(111,108,102,.55)"; x.lineWidth = 1; for (let i = -s; i < s; i += 6) { x.beginPath(); x.moveTo(i, s); x.lineTo(i + s, 0); x.stroke(); } };
+
+const COUCHES = [
+  { groupe: "gSignaux", cle: "cInexpl", ids: ["inexpl-trait", "inexpl-debut", "inexpl-fin"], on: true, sym: "trait-orange" },
+  { groupe: "gSignaux", cle: "cMmsi", ids: ["mmsi-trait", "mmsi-points"], on: true, sym: "trait-violet" },
+  { groupe: "gSignaux", cle: "cStat", ids: ["stationnements"], on: true, sym: "losange" },
+  { groupe: "gSignaux", cle: "cRenc", ids: ["rencontres"], on: true, sym: "rond-vert" },
+  { groupe: "gSignaux", cle: "cRadar", ids: ["radar"], on: true, sym: "carre" },
+  { groupe: "gContexte", cle: "cLacunes", ids: ["lacunes"], on: true, sym: "hachure" },
+  { groupe: "gContexte", cle: "cTrafic", ids: ["trafic"], on: true, sym: "gris" },
+  { groupe: "gContexte", cle: "cInfra", ids: ["infra", "eolien"], on: true, sym: "trait-gris" },
+  { groupe: "gContexte", cle: "cZee", ids: ["zee"], on: true, sym: "tirets" },
+  { groupe: "gAnalyse", cle: "cCouv", ids: ["couverture"], on: false, sym: "couv" },
+  { groupe: "gAnalyse", cle: "cIndice", ids: ["indice"], on: false, sym: "indice" },
+];
+const SYMBOLES = {
+  "trait-orange": '<svg class="symbole" viewBox="0 0 22 14"><line x1="2" y1="7" x2="20" y2="7" stroke="#eb6834" stroke-width="2.2" stroke-dasharray="3 2"/><circle cx="3.5" cy="7" r="3" fill="#fff" stroke="#eb6834" stroke-width="1.6"/><circle cx="18.5" cy="7" r="3" fill="#eb6834"/></svg>',
+  "trait-violet": '<svg class="symbole" viewBox="0 0 22 14"><line x1="3" y1="7" x2="19" y2="7" stroke="#4a3aa7" stroke-width="1.2" opacity=".6"/><circle cx="3" cy="7" r="2.4" fill="#4a3aa7"/><circle cx="19" cy="7" r="2.4" fill="#4a3aa7"/></svg>',
+  losange: '<svg class="symbole" viewBox="0 0 22 14"><path d="M11 1 L17 7 L11 13 L5 7 Z" fill="#2a78d6" stroke="#fff"/></svg>',
+  "rond-vert": '<svg class="symbole" viewBox="0 0 22 14"><circle cx="11" cy="7" r="5" fill="#1baf7a" stroke="#fff" stroke-width="1.2"/></svg>',
+  carre: '<svg class="symbole" viewBox="0 0 22 14"><rect x="6.5" y="2.5" width="9" height="9" fill="#fff" stroke="#1d1d1b" stroke-width="1.8"/></svg>',
+  hachure: '<svg class="symbole" viewBox="0 0 22 14"><defs><pattern id="h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#6f6c66" stroke-width="1"/></pattern></defs><rect width="22" height="14" fill="url(#h)"/></svg>',
+  gris: '<svg class="symbole" viewBox="0 0 22 14"><rect width="11" height="14" fill="#d4dde3"/><rect x="11" width="11" height="14" fill="#97aab6"/></svg>',
+  "trait-gris": '<svg class="symbole" viewBox="0 0 22 14"><line x1="2" y1="7" x2="20" y2="7" stroke="#9a9387" stroke-width="1.4"/></svg>',
+  tirets: '<svg class="symbole" viewBox="0 0 22 14"><line x1="1" y1="7" x2="21" y2="7" stroke="#7f8c96" stroke-width="1.4" stroke-dasharray="4 2.5"/></svg>',
+  couv: '<svg class="symbole" viewBox="0 0 22 14"><rect width="7.3" height="14" fill="#d5e5dd"/><rect x="7.3" width="7.3" height="14" fill="#f2c79b"/><rect x="14.6" width="7.4" height="14" fill="#d8693f"/></svg>',
+  indice: '<svg class="symbole" viewBox="0 0 22 14"><rect width="7.3" height="14" fill="#fbd8c7"/><rect x="7.3" width="7.3" height="14" fill="#f2a07a"/><rect x="14.6" width="7.4" height="14" fill="#c24f22"/></svg>',
+};
+
+let chiffres = {}, validation = [];
+const fmt = (v, d = 0) => v == null ? "–" : new Intl.NumberFormat(langue === "fr" ? "fr-FR" : "en-GB", { maximumFractionDigits: d, minimumFractionDigits: d }).format(v);
+
+function rendreTextes() {
+  document.documentElement.lang = langue;
+  document.querySelectorAll("[data-t]").forEach((e) => {
+    const k = e.dataset.t;
+    if (k === "sources") return;  // garde ses liens, identique dans les deux langues
+    e.textContent = t(k);
+  });
+  document.querySelectorAll(".langue button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === langue)));
+  etiquettes.forEach(([e, en, fr]) => { e.textContent = langue === "fr" ? fr : en; });
+  const tuiles = [
+    ["nb_navires", "navires", ""], ["nb_silences", "silences", ""], ["nb_reception", "reception", ""],
+    ["nb_inexpliquees", "inexpl", "orange"], ["nav_mmsi_partage", "mmsi", "violet"], ["nb_stationnements", "stat", "bleu"],
+    ["nb_rencontres", "renc", "vert"], ["nb_radar_sans_ais", "radar", "encre"],
+  ];
+  document.getElementById("tuiles").innerHTML = tuiles.filter(([k]) => k in chiffres)
+    .map(([k, l, c]) => `<div class="tuile ${c}"><b>${fmt(chiffres[k])}</b><span>${t(l)}</span></div>`).join("");
+  document.getElementById("barres").innerHTML = validation.map((v) =>
+    `<div class="barre"><span>${t(v.classe)}</span><span class="piste"><span class="rempli" style="width:${(100 * v.part).toFixed(1)}%"></span></span><b>${fmt(100 * v.part, 0)} %</b></div>`).join("");
+  let html = "", groupe = "";
+  for (const c of COUCHES) {
+    if (c.groupe !== groupe) { groupe = c.groupe; html += `<h2 style="margin:12px 0 4px">${t(groupe)}</h2>`; }
+    html += `<label class="couche"><input type="checkbox" data-cle="${c.cle}" ${c.on ? "checked" : ""}>${SYMBOLES[c.sym]}<span>${t(c.cle)}</span></label>`;
+  }
+  document.getElementById("couches").innerHTML = html;
+  document.querySelectorAll("#couches input").forEach((i) => i.addEventListener("change", () => {
+    const c = COUCHES.find((x) => x.cle === i.dataset.cle); c.on = i.checked;
+    c.ids.forEach((id) => carte.getLayer(id) && carte.setLayoutProperty(id, "visibility", i.checked ? "visible" : "none"));
+  }));
+}
+document.querySelectorAll(".langue button").forEach((b) => b.addEventListener("click", () => { langue = b.dataset.lang; rendreTextes(); }));
+
+const carte = new maplibregl.Map({
+  container: "carte", attributionControl: false, dragRotate: false, pitchWithRotate: false,
+  style: { version: 8, sources: {}, layers: [{ id: "mer", type: "background", paint: { "background-color": "#edf1f3" } }] },
+  bounds: [[8.6, 53.7], [16.9, 58.4]], fitBoundsOptions: { padding: 20 },
+});
+carte.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+carte.addControl(new maplibregl.ScaleControl({ unit: "nautical" }), "bottom-right");
+carte.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution:
+  'DMA · Marine Regions · GISCO · EMODnet · BSH · TeleGeography · © OpenStreetMap · Powered by <a href="https://globalfishingwatch.org">Global Fishing Watch</a>' }), "bottom-left");
+carte.touchZoomRotate.disableRotation();
+
+function extremites(fc) {
+  const debut = [], fin = [];
+  for (const f of fc.features) {
+    const c = f.geometry.type === "LineString" ? f.geometry.coordinates : f.geometry.coordinates.flat();
+    debut.push({ type: "Feature", properties: f.properties, geometry: { type: "Point", coordinates: c[0] } });
+    fin.push({ type: "Feature", properties: f.properties, geometry: { type: "Point", coordinates: c[c.length - 1] } });
+  }
+  return [{ type: "FeatureCollection", features: debut }, { type: "FeatureCollection", features: fin }];
+}
+
+carte.on("load", async () => {
+  const d = { pixelRatio: DENSITE };
+  carte.addImage("losange", image(losange), d); carte.addImage("carre", image(carre, 20), d); carte.addImage("hachure", image(hachure, 12), d);
+  const charge = async (n) => { try { const r = await fetch(D + n + ".geojson"); return r.ok ? r.json() : null; } catch { return null; } };
+  const [donnees, ch] = await Promise.all([Promise.all(fichiers.map(charge)), fetch(D + "chiffres.json").then((r) => r.json()).catch(() => ({}))]);
+  chiffres = ch; validation = (ch.validation_radar || []);
+  fichiers.forEach((n, i) => donnees[i] && carte.addSource(n, { type: "geojson", data: donnees[i] }));
+  const si = (n) => !!carte.getSource(n);
+
+  if (si("trafic")) carte.addLayer({ id: "trafic", type: "fill", source: "trafic",
+    paint: { "fill-color": ["match", ["get", "classe"], 1, "#e2e8ec", 2, "#d4dde3", 3, "#c2cfd7", 4, "#aebfc9", "#97aab6"] } });
+  if (si("lacunes")) carte.addLayer({ id: "lacunes", type: "fill", source: "lacunes", paint: { "fill-pattern": "hachure" } });
+  if (si("couverture")) carte.addLayer({ id: "couverture", type: "fill", source: "couverture", layout: { visibility: "none" },
+    paint: { "fill-color": ["match", ["get", "classe"], "Reliable", "#d5e5dd", "Degraded", "#f2c79b", "Poor", "#d8693f", "#e4e3df"], "fill-opacity": 0.9 } });
+  if (si("indice")) carte.addLayer({ id: "indice", type: "fill", source: "indice", layout: { visibility: "none" },
+    paint: { "fill-color": ["step", ["get", "indice"], "#fbd8c7", 15, "#f2a07a", 30, "#c24f22"], "fill-opacity": 0.9, "fill-outline-color": "#ffffff" } });
+  carte.addLayer({ id: "terre", type: "fill", source: "terre", paint: { "fill-color": "#e7e3db" } });
+  carte.addLayer({ id: "cote", type: "line", source: "terre", paint: { "line-color": "#b8b0a2", "line-width": 0.6 } });
+  if (si("eolien")) carte.addLayer({ id: "eolien", type: "fill", source: "eolien", paint: { "fill-color": "#dde5d9", "fill-outline-color": "#9fb39a" } });
+  if (si("infrastructure")) carte.addLayer({ id: "infra", type: "line", source: "infrastructure",
+    paint: { "line-color": "#9a9387", "line-width": ["match", ["get", "categorie"], "pipeline", 1.2, 0.8], "line-opacity": 0.6 } });
+  carte.addLayer({ id: "zee", type: "line", source: "limite_zee", paint: { "line-color": "#7f8c96", "line-width": 1.1, "line-dasharray": [3, 2] } });
+  carte.addLayer({ id: "etude", type: "line", source: "zone_etude", paint: { "line-color": "#1d1d1b", "line-width": 1 } });
+
+  if (si("mmsi_partages")) {
+    const [d, f] = extremites(donnees[fichiers.indexOf("mmsi_partages")]);
+    carte.addSource("mmsi_pts", { type: "geojson", data: { type: "FeatureCollection", features: d.features.concat(f.features) } });
+    carte.addLayer({ id: "mmsi-trait", type: "line", source: "mmsi_partages", paint: { "line-color": "#4a3aa7", "line-width": 0.9, "line-opacity": 0.45 } });
+    carte.addLayer({ id: "mmsi-points", type: "circle", source: "mmsi_pts", paint: { "circle-radius": 3.2, "circle-color": "#4a3aa7", "circle-stroke-color": "#fff", "circle-stroke-width": 0.8 } });
+  }
+  if (si("silences_inexpliques")) {
+    const [d, f] = extremites(donnees[fichiers.indexOf("silences_inexpliques")]);
+    carte.addSource("inexpl_debut", { type: "geojson", data: d }); carte.addSource("inexpl_fin", { type: "geojson", data: f });
+    carte.addLayer({ id: "inexpl-halo", type: "line", source: "silences_inexpliques", paint: { "line-color": "#fff", "line-width": 4.5, "line-opacity": 0.85 } });
+    carte.addLayer({ id: "inexpl-trait", type: "line", source: "silences_inexpliques", paint: { "line-color": "#eb6834", "line-width": 2.2, "line-dasharray": [2, 1.4] } });
+    carte.addLayer({ id: "inexpl-debut", type: "circle", source: "inexpl_debut", paint: { "circle-radius": 4.5, "circle-color": "#fff", "circle-stroke-color": "#eb6834", "circle-stroke-width": 2 } });
+    carte.addLayer({ id: "inexpl-fin", type: "circle", source: "inexpl_fin", paint: { "circle-radius": 4.5, "circle-color": "#eb6834", "circle-stroke-color": "#fff", "circle-stroke-width": 1.2 } });
+  }
+  if (si("rencontres")) carte.addLayer({ id: "rencontres", type: "circle", source: "rencontres",
+    paint: { "circle-radius": 5, "circle-color": "#1baf7a", "circle-stroke-color": "#fff", "circle-stroke-width": 1.2 } });
+  if (si("stationnements")) carte.addLayer({ id: "stationnements", type: "symbol", source: "stationnements",
+    layout: { "icon-image": "losange", "icon-size": 0.85, "icon-allow-overlap": true } });
+  if (si("radar_sans_ais")) carte.addLayer({ id: "radar", type: "symbol", source: "radar_sans_ais",
+    layout: { "icon-image": "carre", "icon-size": 0.8, "icon-allow-overlap": true } });
+  // le halo suit l'interrupteur de son trait
+  COUCHES[0].ids.push("inexpl-halo");
+
+  for (const [en, fr, nature, lon, lat] of LIEUX) {
+    const e = document.createElement("div"); e.className = "lieu " + (nature === "mer" ? "" : nature);
+    etiquettes.push([e, en, fr]);
+    new maplibregl.Marker({ element: e, anchor: nature === "ville" ? "left" : "center", offset: nature === "ville" ? [4, 0] : [0, 0] }).setLngLat([lon, lat]).addTo(carte);
+  }
+
+  // fenêtres d'information
+  const ligne = (k, v) => v == null || v === "" ? "" : `<dt>${t(k)}</dt><dd>${v}</dd>`;
+  const fiches = {
+    "inexpl-trait": (p) => `<h3>${t("cInexpl")}</h3><dl>${ligne("vessel", p.navire)}${ligne("family", t(p.famille))}${ligne("start", p.debut + " UTC")}${ligne("end", p.fin + " UTC")}${ligne("duration", fmt(p.duree_h, 1) + " " + t("h"))}${ligne("distance", fmt(p.distance_nm, 1) + " " + t("nm"))}${ligne("nature", t(p.nature))}</dl>`,
+    "mmsi-trait": (p) => `<h3>${t("cMmsi")}</h3><dl>${ligne("vessel", p.navire)}${ligne("start", p.debut + " UTC")}${ligne("distance", fmt(p.distance_nm, 1) + " " + t("nm"))}${ligne("speed", fmt(p.vitesse_implicite) + " " + t("kn"))}</dl>`,
+    stationnements: (p) => `<h3>${t("cStat")}</h3><dl>${ligne("vessel", p.navire)}${ligne("family", t(p.famille))}${ligne("start", p.debut + " UTC")}${ligne("duration", fmt(p.duree_h, 1) + " " + t("h"))}${ligne("infra", t(p.infrastructure))}${ligne("distance", fmt(p.distance_min_m) + " " + t("m"))}</dl>`,
+    rencontres: (p) => `<h3>${t("cRenc")}</h3><dl>${ligne("family", t(p.famille_a) + " / " + t(p.famille_b))}${ligne("start", p.debut + " UTC")}${ligne("duration", fmt(p.duree_h, 1) + " " + t("h"))}${ligne("distance", fmt(p.distance_moyenne_m) + " " + t("m"))}</dl>`,
+    radar: (p) => `<h3>${t("cRadar")}</h3><dl>${ligne("time", p.instant + " UTC")}${ligne("category", t(p.categorie))}${ligne("coverage", t(p.classe_couverture))}</dl>`,
+    couverture: (p) => `<h3>${t("cCouv")}</h3><dl>${ligne("coverage", t(p.classe))}${ligne("received", p.taux_reception == null ? "–" : fmt(100 * p.taux_reception) + " %")}${ligne("lost", fmt(100 * p.taux_perte) + " %")}${ligne("vessels", fmt(p.nb_navires))}</dl>`,
+    indice: (p) => `<h3>${t("cIndice")}</h3><dl>${ligne("index", fmt(p.indice, 1))}${ligne("signals", p.nb_signaux)}${ligne("vessels", fmt(p.nb_navires))}</dl>`,
+  };
+  const ordre = ["radar", "stationnements", "rencontres", "inexpl-trait", "mmsi-trait", "indice", "couverture"];
+  carte.on("click", (e) => {
+    if (window.dessinEnCours) return;
+    const visibles = ordre.filter((id) => carte.getLayer(id) && carte.getLayoutProperty(id, "visibility") !== "none");
+    const f = carte.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: visibles })[0];
+    if (f) new maplibregl.Popup({ maxWidth: "300px" }).setLngLat(e.lngLat).setHTML(fiches[f.layer.id](f.properties)).addTo(carte);
+  });
+  carte.on("mousemove", (e) => {
+    const visibles = ordre.filter((id) => carte.getLayer(id) && carte.getLayoutProperty(id, "visibility") !== "none");
+    carte.getCanvas().style.cursor = carte.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: visibles }).length ? "pointer" : "";
+  });
+  rendreTextes();
+  // sur téléphone, l'attribution reste repliée (le détail des sources est dans le panneau)
+  if (matchMedia("(max-width: 760px)").matches)
+    document.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+  document.dispatchEvent(new Event("carte-prete"));
+});
+</script>
+<script src="fiche.js"></script>
+</body>
+</html>
