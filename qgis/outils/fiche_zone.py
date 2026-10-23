@@ -27,7 +27,13 @@ from qgis.core import (
 
 MISE_EN_PAGE = "Zone sheet"
 THEME = "Zone sheet – main map"
+COUCHE_ZONES = "My areas of interest"
 WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
+
+# couches d'analyse du projet : des résultats, pas des zones. Les prendre pour zone donne une fiche
+# absurde (par exemple les eaux mal couvertes, avec 0 % de trafic bien couvert)
+TABLES_INTERDITES = {"lacunes_reception", "couverture", "trafic", "trafic_classes", "indice_vigilance",
+                     "terre", "zone_contour"}
 
 CHAMPS = [  # champs lus par la mise en page « Zone sheet »
     ("zone_id", "string"), ("nom", "string"), ("sous_titre", "string"), ("ordre", "integer"),
@@ -179,7 +185,8 @@ class FicheZone(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(
-            self.ZONE, "Zone (couche de polygones)", [QgsProcessing.TypeVectorPolygon]))
+            self.ZONE, "Zone (couche de polygones ; cocher « Entités sélectionnées uniquement »)",
+            [QgsProcessing.TypeVectorPolygon], defaultValue=COUCHE_ZONES))
         self.addParameter(QgsProcessingParameterString(
             self.NOM, "Nom de la zone, en anglais (vide : nom du polygone)", defaultValue="", optional=True))
         self.addParameter(QgsProcessingParameterFileDestination(
@@ -202,9 +209,25 @@ class FicheZone(QgsProcessingAlgorithm):
 
         # 1. la zone, fusionnée et en WGS84
         source = self.parameterAsSource(parameters, self.ZONE, context)
+        couche_zone = self.parameterAsVectorLayer(parameters, self.ZONE, context)
+        nom_couche = couche_zone.name() if couche_zone else source.sourceName()
+        table = re.search(r"layername=([^|]+)", couche_zone.source()) if couche_zone else None
+        if table and table.group(1) in TABLES_INTERDITES:
+            raise QgsProcessingException(
+                f"« {nom_couche} » est une couche d'analyse du projet, pas une zone. Choisir la couche "
+                f"« {COUCHE_ZONES} » (ou une couche de zones à vous) et cocher « Entités sélectionnées uniquement ».")
         entites = [f for f in source.getFeatures() if f.hasGeometry()]
         if not entites:
-            raise QgsProcessingException("La couche de zone ne contient aucun polygone.")
+            raise QgsProcessingException(
+                f"Aucun polygone dans « {nom_couche} » : sélectionner une zone sur la carte, ou décocher "
+                "« Entités sélectionnées uniquement ».")
+        noms = {str(f[c]) for f in entites for c in ("nom", "name") if c in f.fields().names() and f[c]}
+        if len(noms) > 1 and not (self.parameterAsString(parameters, self.NOM, context) or "").strip():
+            raise QgsProcessingException(
+                f"{len(entites)} zones de « {nom_couche} » seraient fusionnées ({', '.join(sorted(noms))}). "
+                "Cocher « Entités sélectionnées uniquement » et sélectionner une zone, ou donner un nom pour "
+                "confirmer la fusion.")
+        feedback.pushInfo(f"Zone : {len(entites)} polygone(s) de la couche « {nom_couche} »")
         geom = QgsGeometry.unaryUnion([f.geometry() for f in entites])
         geom.transform(QgsCoordinateTransform(source.sourceCrs(), WGS84, projet))
         geom = geom.makeValid()
@@ -240,12 +263,15 @@ class FicheZone(QgsProcessingAlgorithm):
             f[n] = valeurs.get(n)
         zone_lyr.dataProvider().addFeature(f)
 
+        # voile et contour : la géométrie seule (ces couches n'ont pas de champs)
+        forme = QgsFeature()
+        forme.setGeometry(geom)
         voile = couche_memoire("MultiPolygon?crs=EPSG:4326", "voile", projet)
-        voile.dataProvider().addFeature(f)
+        voile.dataProvider().addFeature(QgsFeature(forme))
         fond = QgsFillSymbol.createSimple({"color": "255,255,255,140", "outline_style": "no"})
         voile.setRenderer(QgsInvertedPolygonRenderer(QgsSingleSymbolRenderer(fond)))
         contour = couche_memoire("MultiPolygon?crs=EPSG:4326", "contour", projet)
-        contour.dataProvider().addFeature(f)
+        contour.dataProvider().addFeature(QgsFeature(forme))
         trait = QgsFillSymbol.createSimple({"style": "no", "outline_color": "#2b2b2a", "outline_width": "0.45"})
         contour.setRenderer(QgsSingleSymbolRenderer(trait))
 

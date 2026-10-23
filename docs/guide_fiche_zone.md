@@ -53,12 +53,12 @@ Double-cliquer sur **Produire une fiche de zone** dans la boîte à outils, puis
 
 | Paramètre | Que mettre |
 |---|---|
-| **Zone (couche de polygones)** | `My areas of interest`, et cocher **Entités sélectionnées uniquement** |
+| **Zone (couche de polygones)** | `My areas of interest` (proposée par défaut), et cocher **Entités sélectionnées uniquement** |
 | **Nom de la zone** | Laisser vide pour reprendre le nom du polygone, ou saisir un autre titre (en anglais) |
 | **Fiche PDF** | `…` > **Enregistrer vers un fichier**, par exemple `sorties/fiches/zone-sheet_great-belt.pdf` |
 | **Exporter aussi une image PNG** | Coché par défaut : une image à côté du PDF, pratique pour un courriel ou une présentation |
 
-Cliquer sur **Exécuter**. Le journal affiche les chiffres calculés ; la fiche est prête en général en moins d'une minute.
+Cliquer sur **Exécuter**. Le journal indique la couche et le nombre de polygones utilisés, puis les chiffres calculés ; la fiche est prête en général en moins d'une minute. **Vérifier la ligne « Zone : 1 polygone(s) de la couche … »** : c'est elle qui dit sur quoi la fiche a été calculée.
 
 ### Étape 4 : vérifier la fiche
 
@@ -114,8 +114,10 @@ Les signaux (silences inexpliqués, MMSI partagés, stationnements, rencontres) 
 | *Couche « silence_ais » introuvable* | Le projet n'est pas ouvert : ouvrir `qgis/what_ais_doesnt_show.qgz`, puis relancer. |
 | *Mise en page « Zone sheet » introuvable* | La mise en page a été renommée ou supprimée : rouvrir le projet d'origine ou le reconstruire (`scripts/07_projet_qgis.py`). |
 | *traces.gpkg absent : nombre de navires non calculé* | Les traces ne sont pas versionnées (58 Mo) ; les régénérer avec `scripts/06_export_gpkg.py`. La fiche est produite, la tuile « vessels tracked » reste vide. |
-| Tous les chiffres sont à 0 | La zone est hors de l'aire d'étude, ou la mauvaise couche est choisie. |
-| La fiche montre toute une couche de zones fusionnées | « Entités sélectionnées uniquement » n'était pas coché : l'outil fusionne tous les polygones de la couche. |
+| *« … » est une couche d'analyse du projet, pas une zone* | La liste déroulante pointait sur une couche de résultats (eaux mal couvertes, trafic, indice…). Choisir `My areas of interest` ou une couche de zones à vous. |
+| *N zones de « … » seraient fusionnées* | Plusieurs zones nommées sont prises ensemble : cocher « Entités sélectionnées uniquement » et sélectionner une zone, ou saisir un nom pour confirmer la fusion. |
+| *Aucun polygone dans « … »* | « Entités sélectionnées uniquement » est coché mais rien n'est sélectionné : sélectionner la zone sur la carte. |
+| Tous les chiffres sont à 0 | La zone est hors de l'aire d'étude. |
 | Le titre reste « Area of interest » | Ni nom saisi, ni champ `nom` ou `name` renseigné sur le polygone, ou plusieurs polygones sélectionnés. |
 
 ## 7. Pour aller plus loin
