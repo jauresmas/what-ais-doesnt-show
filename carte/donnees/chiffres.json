@@ -37,5 +37,11 @@
    "recus": 91,
    "part": 0.514
   }
+ ],
+ "options": [
+  "recurrence",
+  "foyers",
+  "inexpliquees_semaines",
+  "semaines"
  ]
 }
