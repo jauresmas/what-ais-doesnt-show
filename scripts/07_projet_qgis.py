@@ -287,6 +287,21 @@ def couches():
                         "NOT \"apparie\" AND \"categorie\" <> 'structure fixe probable (parc éolien)'", "")])
         c["radar"] = radar
 
+    # plusieurs semaines (10_semaines.py) : angles morts ponctuels ou chroniques, foyers de silences
+    # inexpliqués revenus au moins deux semaines ; couches absentes tant que l'étape n'a pas tourné
+    recurrence = QgsVectorLayer(f"{CARTO}|layername=recurrence_couverture", "Blind spots over four weeks", "ogr")
+    if recurrence.isValid():
+        categorise(recurrence, "statut", [
+            ("Chronic", remplissage("#a63c14", "#a63c14", 0, "no"), "Chronic: poor 3 or 4 weeks out of 4"),
+            ("Recurring", remplissage("#e0784a", "#e0784a", 0, "no"), "Recurring: poor 2 weeks"),
+            ("One-off", remplissage("#f6cdb3", "#f6cdb3", 0, "no"), "One-off: poor a single week"),
+            ("Never poor", remplissage("#dfe8e2", "#dfe8e2", 0, "no"), "Never poor"),
+        ])
+        c["recurrence"] = recurrence
+        foyers = QgsVectorLayer(f"{CARTO}|layername=foyer_inexpliquees", "Recurring unexplained silences", "ogr")
+        regles(foyers, [(remplissage(ORANGE, ORANGE, 0.5, transparence=0.35), "\"nb_semaines\" >= 2", "")])
+        c["foyers"] = foyers
+
     c["traces"] = couche("Vessel tracks", "trace", fichier=TRACES)
     familles = [("Cargo", "#2a78d6"), ("Tanker", "#eb6834"), ("Passenger", "#1baf7a"),
                 ("Fishing", "#eda100"), ("Service & authorities", "#e87ba4"),
@@ -402,6 +417,7 @@ GROUPES = [
     ("Signals", ["inexpl", "sauts", "stationnement", "rencontre", "radar"]),
     ("AIS silences, all categories", ["silences"]),
     ("Indicators", ["indice", "lacunes", "couverture", "trafic_fiche", "trafic"]),
+    ("Four weeks", ["foyers", "recurrence"]),
     ("Infrastructure", ["infra_fiche", "infra", "eolien", "mouillage"]),
     ("Boundaries", ["etude", "zee", "mer_terr"]),
     ("Tracks", ["traces"]),
@@ -412,6 +428,7 @@ THEMES = {
     "Zone sheet – main map": ["lieux", "contour", "voile", "inexpl", "sauts", "stationnement", "rencontre", "radar",
                               "lacunes", "trafic_fiche", "infra_fiche", "zee", "terre"],
     "Shore AIS coverage": ["lieux", "station", "couverture", "zee", "etude", "terre"],
+    "Four weeks: chronic blind spots": ["lieux", "foyers", "recurrence", "zee", "etude", "terre"],
     "Vigilance index": ["lieux", "indice", "zee", "etude", "terre"],
     "Infrastructure & loitering": ["lieux", "stationnement", "infra", "eolien", "mouillage", "zee", "terre"],
     "All AIS silences": ["lieux", "silences", "lacunes", "zee", "etude", "terre"],
@@ -432,6 +449,8 @@ SIGNETS = [  # nom, ouest, sud, est, nord (WGS84)
 def arbre(projet, c):
     racine = projet.layerTreeRoot()
     for groupe, cles in GROUPES:
+        if not any(k in c for k in cles):   # groupe d'une étape facultative qui n'a pas tourné
+            continue
         g = racine.addGroup(groupe)
         for k in cles:
             if k in c:  # la couche radar n'existe qu'après 08_sar_gfw.py

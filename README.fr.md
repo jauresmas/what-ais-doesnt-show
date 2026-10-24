@@ -4,6 +4,8 @@
 
 **[Ouvrir la carte web interactive](https://jauresmas.github.io/what-ais-doesnt-show/carte/)** · [English version](README.md)
 
+[![Contrôle](https://github.com/jauresmas/what-ais-doesnt-show/actions/workflows/controle.yml/badge.svg)](https://github.com/jauresmas/what-ais-doesnt-show/actions/workflows/controle.yml)
+
 Une chaîne SIG reproductible, construite uniquement sur des données ouvertes. Elle mesure où le réseau AIS côtier perd réellement les navires, puis sépare les silences AIS ordinaires de ceux qu'aucune explication ordinaire ne justifie. Elle signale aussi les conflits d'identité, les passages lents au-dessus des câbles sous-marins et les rencontres en mer, et les combine en un indice de vigilance sur une grille H3.
 
 > Projet personnel de démonstration, sur données ouvertes uniquement. Les indicateurs signalent des écarts au comportement attendu, pas des infractions : aucun navire n'est nommé ni mis en cause, et les productions publiques sont agrégées ou pseudonymisées.
@@ -36,13 +38,17 @@ Une fiche A4 par zone d'intérêt, produite par un atlas QGIS : l'aire d'étude,
 
 ## Carte web
 
-Les mêmes couches dans un navigateur, en français et en anglais : [jauresmas.github.io/what-ais-doesnt-show/carte/](https://jauresmas.github.io/what-ais-doesnt-show/carte/). Un clic sur un signal ouvre sa fiche courte ; la couverture et l'indice de vigilance s'affichent comme vues d'analyse. La page est statique (MapLibre GL JS lit des fichiers GeoJSON écrits par `09_carte_web.py`) et GitHub Pages la sert depuis ce dépôt.
+Les mêmes couches dans un navigateur, en français et en anglais : [jauresmas.github.io/what-ais-doesnt-show/carte/](https://jauresmas.github.io/what-ais-doesnt-show/carte/).
+
+Trois **récits guidés** ouvrent le panneau, en quelques étapes chacun, dont deux rejoués heure par heure avec un curseur temporel : [un angle mort confirmé par satellite](https://jauresmas.github.io/what-ais-doesnt-show/carte/#recit=couverture), [un navire de pêche silencieux et un écho radar](https://jauresmas.github.io/what-ais-doesnt-show/carte/#recit=silence), [une identité partagée par deux émetteurs](https://jauresmas.github.io/what-ais-doesnt-show/carte/#recit=identite). Les cas sont choisis par des règles fixes dans `09_carte_web.py` (le silence inexpliqué recoupé par un passage radar, le navire aux sauts impossibles les plus nombreux), pas à la main.
+
+Un clic sur un signal ouvre sa fiche courte ; la couverture et l'indice de vigilance s'affichent comme vues d'analyse. La page est statique (MapLibre GL JS lit des fichiers GeoJSON écrits par `09_carte_web.py`) et GitHub Pages la sert depuis ce dépôt.
 
 Elle produit aussi une **fiche de zone** sans QGIS : choisir l'aire d'étude ou une ZEE, dessiner une zone sur la carte ou importer un fichier GeoJSON, et la page compose une fiche A4 (carte, chiffres clés, graphique des causes de silence, méthode) qui s'imprime en PDF, avec les chiffres en CSV, la zone en GeoJSON et un lien qui rouvre la même fiche. Les zones prédéfinies portent les chiffres exacts de la chaîne ; pour une zone libre, le navigateur applique les règles de l'outil QGIS avec Turf.js et h3-js, et le nombre de navires est estimé à partir des mailles H3. Les données nécessaires (début des silences, mailles H3 et leurs navires sous des numéros sans lien avec le MMSI, détections radar) ne se chargent qu'à la demande d'une fiche.
 
 ## Une fiche pour n'importe quelle zone : un outil de traitement QGIS
 
-`qgis/outils/fiche_zone.py` ajoute **Produire une fiche de zone** à la boîte à outils de traitement de QGIS. On dessine un polygone dans la couche *My areas of interest* (trois exemples sont fournis), on le sélectionne, on lance l'outil : il calcule les chiffres clés à partir des GeoPackages (aucune base de données nécessaire), dessine le graphique et exporte la fiche A4 en PDF et en PNG, avec la même mise en page que l'atlas. Il fonctionne aussi en lot, une ligne par zone.
+`qgis/outils/fiche_zone.py` ajoute **Produire une fiche de zone** à la boîte à outils de traitement de QGIS, comme script ou comme extension installable : [sorties/extension/what_ais_fiche_zone.zip](sorties/extension/what_ais_fiche_zone.zip) (Extensions → Installer/Gérer les extensions → Installer depuis un ZIP), construite à partir du même fichier par `scripts/empaqueter_extension.py`. On dessine un polygone dans la couche *My areas of interest* (trois exemples sont fournis), on le sélectionne, on lance l'outil : il calcule les chiffres clés à partir des GeoPackages (aucune base de données nécessaire), dessine le graphique et exporte la fiche A4 en PDF et en PNG, avec la même mise en page que l'atlas. Il fonctionne aussi en lot, une ligne par zone.
 
 Validé sur les cinq zones de l'atlas : les signaux sont identiques ; le nombre de navires est inférieur de 1 à 2,5 % (traces au lieu de positions) et la part du trafic bien couvert peut s'écarter jusqu'à 8 points dans une zone côtière à grands ports. Détails et mode d'emploi pas à pas pour les non-spécialistes : [docs/guide_fiche_zone.md](docs/guide_fiche_zone.md).
 
@@ -75,12 +81,41 @@ Le radar Sentinel-1 voit les navires, qu'ils émettent ou non. Global Fishing Wa
 
 La part reçue suit les classes de couverture : une source qui ne doit rien à l'AIS côtier confirme la carte de couverture. Sur les 238 détections sans AIS, 28 sont dans des parcs éoliens (structures fixes), 26 sont proches d'un navire en silence AIS à cette minute, et 72 sont vues seulement au radar dans des eaux bien couvertes. Trois des 11 silences inexpliqués ont eu lieu pendant un passage ; pour l'un d'eux, une détection sans AIS se trouve à moins de 5 km de la position supposée du navire. Les détections sans AIS figurent sur les fiches de zone, dans le projet QGIS et sur la carte web, hors structures des parcs éoliens. Données radar : Powered by [Global Fishing Watch](https://globalfishingwatch.org) (CC BY-NC 4.0).
 
+## Quatre semaines : ponctuel ou chronique ?
+
+Une semaine ne permet pas de distinguer un manque durable d'un mauvais hasard. La même chaîne, sans aucune modification, a tourné sur les trois semaines qui précèdent la semaine d'étude, chacune dans sa propre base : `10_semaines.py` ne change que la variable d'environnement `AIS_DEBUT`, puis rassemble les résultats.
+
+| Semaine du | Navires | Silences AIS | Inexpliqués | Trafic en route dans des eaux bien couvertes |
+|---|---:|---:|---:|---:|
+| 22 septembre 2026 | 3 156 | 4 974 | 4 | 89,6 % |
+| 29 septembre 2026 | 3 136 | 4 927 | 7 | 88,9 % |
+| 6 octobre 2026 | 2 837 | 3 836 | 11 | 91,9 % |
+| 13 octobre 2026 (semaine d'étude) | 2 894 | 3 880 | 11 | 91,3 % |
+
+- **Les angles morts sont durables.** 168 mailles H3 (5 120 km²) sont mal couvertes au moins trois semaines sur quatre, contre 207 une seule semaine. 109 sont dans les eaux allemandes, 37 dans les eaux suédoises et 22 dans les eaux polonaises ; aucune dans les eaux danoises. Ce sont des manques du réseau côtier, là où une détection qui ne dépend pas de l'émission du navire sert semaine après semaine.
+- **Les silences inexpliqués ne reviennent pas.** 33 en quatre semaines, venant de 30 navires différents ; un seul navire en a deux semaines différentes, et quatre zones de 250 km² en voient deux semaines, aucune trois. S'ils tenaient à un défaut de la méthode ou de la carte de couverture, ils reviendraient aux mêmes endroits.
+
+Sur la carte web : une vue d'analyse, un tableau de synthèse et un quatrième récit, [Chronique ou ponctuel ?](https://jauresmas.github.io/what-ais-doesnt-show/carte/#recit=semaines). Dans le projet QGIS : le groupe et le thème *Four weeks*. Le détail est dans le [rapport qualité](docs/rapport_qualite.md) (§ 10) et la [méthode](docs/methode.md) (§ 10).
+
 ## Ce qui rend l'analyse fiable
 
 - **La couverture est mesurée, pas supposée.** La réception est calculée par maille H3 à partir du trafic lui-même : part des intervalles d'une minute effectivement reçus, et part des navires attendus perdus en traversant la maille. Cette seconde mesure corrige un biais de sélection découvert pendant la mise au point : des silences se concentraient sur un même tronçon de route, pour des navires différents à des heures différentes, dans des mailles affichant 98 % de réception. Un navire jamais reçu ne laisse aucune trace : la réception seule surestime donc la couverture. La mesure des navires perdus déclasse 288 mailles.
 - **« Inexpliqué » se mérite.** Un silence est rangé dans neuf catégories, de la plus ordinaire (bateau-pilote, escale, voie navigable intérieure, bord de l'aire d'étude, trou de réception, sortie possible de la couverture) à *inexpliqué*. Il n'atteint cette dernière que si le navire est resté dans des eaux bien couvertes, si le réseau recevait ses voisins heure par heure, et s'il n'avait pas le temps de sortir de la couverture et d'y revenir.
 - **Chaque ligne écartée est comptée.** Le nettoyage consigne chaque ligne rejetée avec son motif (`qualite.bilan_nettoyage`) : 28 % des lignes brutes sont des doublons exacts, reçus par plusieurs stations.
 - **Une seule source pour les seuils.** Tous les seuils sont réunis dans `scripts/config.py` et passés au SQL comme variables : en modifier un et relancer `04_indicateurs.py` refait toute l'analyse. Chaque seuil est justifié dans [docs/methode.md](docs/methode.md).
+
+## Contrôle qualité
+
+Chaque envoi sur GitHub déclenche [GitHub Actions](https://github.com/jauresmas/what-ais-doesnt-show/actions/workflows/controle.yml), sans base de données :
+
+- **Règles** : classes de couverture et pseudonymes (`scripts/regles.py`).
+- **Données publiées** : chaque fichier de la carte web se lit, les chiffres concordent d'un fichier à l'autre (les comptes par zone retombent sur les silences, les sous-zones restent dans l'aire d'étude, parts radar), et aucun MMSI ni autre identifiant n'apparaît nulle part.
+- **Carte web dans un navigateur sans écran** : chargement sans erreur, lecture des trois récits, mise en page d'une fiche de zone, et recalcul de l'aire d'étude dans le navigateur comparé à la chaîne (comptes de signaux identiques, navires à 1 % près).
+- **Extension QGIS** : construite et publiée comme artefact ; un test vérifie que l'archive du dépôt correspond au code de l'outil. Un test de bout en bout dans QGIS (`tests/qgis_extension.py`) l'installe, ouvre le projet et produit une fiche ; il s'exécute sur le poste avec le Python de QGIS.
+
+```bash
+python -m pytest
+```
 
 ## Chaîne de traitement
 
@@ -114,7 +149,10 @@ flowchart LR
 | `07_projet_qgis.py` | Construit le projet QGIS (styles, thèmes, signets, mises en page) et exporte les fiches ; s'exécute dans QGIS ou avec le Python de QGIS |
 | `08_sar_gfw.py` | Facultatif : détections Sentinel-1 de l'API Global Fishing Watch (jeton personnel dans `gfw_token.txt`, non versionné), croisées avec l'AIS danois dans `sql/12_sar.sql` ; s'exécute juste après l'étape 04 |
 | `09_carte_web.py` | Écrit les couches GeoJSON allégées et les chiffres clés lus par la carte web (`carte/`), et les données de sa fiche de zone |
-| `run_all.py` | Toute la chaîne ; `--depuis 04` reprend à une étape donnée |
+| `10_semaines.py` | Semaines de comparaison : les étapes 00 à 04, sans modification, pour chaque semaine dans sa propre base, puis récurrence de la couverture et des silences inexpliqués (`sql/13_semaines.sql`) |
+| `copier_base.ps1` | Copie la base du projet dans un autre serveur PostgreSQL (pgAdmin, DBeaver, QGIS) ; demande le mot de passe une fois |
+| `run_all.py` | Toute la chaîne ; `--depuis 04` reprend à une étape donnée, `--sans-semaines` saute les semaines de comparaison |
+| `regles.py`, `empaqueter_extension.py` | Règles sans base (classes de couverture, pseudonymes) ; construction de l'extension QGIS |
 
 ## Lancer la chaîne
 
@@ -124,7 +162,7 @@ Prérequis : Python 3.10 avec les paquets de `requirements.txt` ; PostgreSQL 15 
 python scripts/run_all.py
 ```
 
-Compter une quarantaine de minutes sur un portable, et 4,3 Go téléchargés au premier passage. L'étape 07 utilise le Python de QGIS (`python-qgis-ltr.bat`). Les données brutes ne sont pas versionnées : les scripts les téléchargent à nouveau.
+Compter environ 3 heures sur un portable et 18 Go téléchargés au premier passage, semaines de comparaison comprises ; `--sans-semaines` ne traite que la semaine d'étude (une quarantaine de minutes, 4,3 Go). Pour ouvrir la base dans son propre PostgreSQL : `.\scripts\copier_base.ps1`. L'étape 07 utilise le Python de QGIS (`python-qgis-ltr.bat`). Les données brutes ne sont pas versionnées : les scripts les téléchargent à nouveau.
 
 ## Organisation du dépôt
 
@@ -133,8 +171,10 @@ scripts/        chaîne de traitement (00 à 09), configuration, scripts SQL dan
 docs/           méthode, sources et licences, rapport qualité généré, guide de l'outil, note d'incident
 donnees/        téléchargements bruts (non versionnés) et GeoPackages de cartographie
 qgis/           projet QGIS, outil de traitement (qgis/outils/) et graphiques des fiches
-sorties/        fiches de zone exportées (PDF, PNG)
-carte/          carte web (page statique et ses données GeoJSON)
+sorties/        fiches de zone exportées (PDF, PNG) et extension QGIS (sorties/extension)
+carte/          carte web (page statique, récits, fiche de zone, données GeoJSON)
+tests/          tests automatiques (règles, données publiées, carte web, extension QGIS)
+.github/        flux GitHub Actions
 ```
 
 ## Limites
@@ -142,12 +182,12 @@ carte/          carte web (page statique et ses données GeoJSON)
 - Au-delà des eaux danoises, la couverture AIS repose sur une réception à longue distance qui varie avec la météo : le projet la mesure, mais ne peut pas la supprimer.
 - Les tracés publics des câbles et pipelines sont indicatifs. Trois sources sont combinées et documentées dans [docs/sources.md](docs/sources.md).
 - Un silence inexpliqué peut encore venir d'un émetteur défaillant ou d'une antenne mal placée. Les indicateurs disent où regarder, pas ce qui s'est passé.
-- Une semaine de données : les indicateurs décrivent cette semaine, pas une tendance de fond.
+- Quatre semaines d'automne : elles séparent les manques durables des manques ponctuels, pas les effets saisonniers (en été, la propagation peut étendre la réception côtière).
 
 ## Pour aller plus loin
 
-- Plusieurs semaines de données, pour distinguer les phénomènes récurrents des événements ponctuels.
-- Un curseur temporel sur la carte web, pour suivre les silences et les passages radar heure par heure.
+- Une saison entière ou plus, pour séparer les effets de propagation des manques du réseau.
+- Les détections radar des semaines de comparaison, pour contrôler les angles morts chroniques de façon indépendante.
 
 ## Documentation
 

@@ -1,0 +1,52 @@
+/* Récits guidés : choix dans le panneau et carte de récit posée sur la carte */
+
+.recits-panneau { margin: 0 0 14px; }
+.recits-panneau h2 { margin-top: 4px; color: var(--encre); }
+.recits-panneau .note { margin: 0 0 10px; color: var(--encre-2); }
+.recits-liste { display: grid; gap: 8px; }
+.recit-choix { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 10px; width: 100%; text-align: left;
+  font: inherit; color: var(--encre); background: #fff; border: 1px solid #e3e0d9; border-radius: 10px; padding: 10px 12px; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, transform .15s; }
+.recit-choix:hover { border-color: #c9c5bc; box-shadow: 0 3px 10px rgba(29, 29, 27, .07); transform: translateY(-1px); }
+.recit-choix:focus-visible { outline: 2px solid var(--bleu); outline-offset: 2px; }
+.recit-choix b { display: block; font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+.recit-choix b + span { display: block; font-size: 12px; color: var(--encre-2); margin-top: 1px; }
+.recit-fleche { color: var(--encre-3); font-size: 15px; }
+.recit-pastille { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+.recit { position: absolute; left: 16px; bottom: 34px; z-index: 3; width: 380px; max-width: calc(100% - 32px);
+  max-height: calc(100% - 60px); overflow: auto; background: rgba(251, 250, 248, .97); backdrop-filter: blur(6px);
+  border: 1px solid #e3e0d9; border-radius: 14px; box-shadow: 0 12px 34px rgba(29, 29, 27, .16); padding: 14px 16px 12px;
+  animation: recit-entree .25s ease-out; }
+@keyframes recit-entree { from { opacity: 0; transform: translateY(8px); } }
+.recit-tete { display: flex; align-items: center; gap: 8px; }
+.recit-kicker { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--encre-2); }
+.recit-quitter { margin-left: auto; border: 0; background: transparent; font-size: 15px; color: var(--encre-3); cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.recit-quitter:hover { color: var(--encre); background: #efede8; }
+.recit h3 { margin: 6px 0 6px; font-size: 18px; line-height: 1.2; letter-spacing: -.01em; }
+.recit-texte { margin: 0; font-size: 14px; line-height: 1.5; color: #2f2e2b; min-height: 4.5em; }
+.recit-legende { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; }
+.recit-legende span { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--encre-2); }
+.recit-legende svg { width: 14px; height: 14px; flex: none; }
+.recit-temps { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 4px 10px; margin-top: 12px; }
+.recit-lire { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--encre); color: #fff; font-size: 12px; cursor: pointer; }
+.recit-lire:focus-visible, .recit-temps input:focus-visible { outline: 2px solid var(--bleu); outline-offset: 2px; }
+.recit-temps input { width: 100%; accent-color: var(--orange); margin: 0; }
+.recit-heure { grid-column: 2; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--encre-2); }
+.recit-nav { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #ebe8e2; }
+.recit-points { display: flex; gap: 6px; margin-right: auto; }
+.recit-points button { width: 8px; height: 8px; padding: 0; border-radius: 50%; border: 0; background: #d6d2c9; cursor: pointer; }
+.recit-points button.actif { background: var(--encre); width: 20px; border-radius: 4px; }
+.recit-nav > button { font: inherit; font-size: 13px; font-weight: 500; padding: 7px 12px; border-radius: 8px; border: 1px solid #d6d2c9;
+  background: #fff; color: var(--encre); cursor: pointer; }
+.recit-nav > button:disabled { opacity: .4; cursor: default; }
+.recit-nav > button.primaire { background: var(--encre); border-color: var(--encre); color: #fff; }
+
+@media (max-width: 760px) {
+  /* sur téléphone, le récit prend la place du panneau : la carte reste entièrement visible */
+  .recit { position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-width: none; height: 48%; max-height: none;
+    border-radius: 14px 14px 0 0; border-width: 1px 0 0; padding: 14px 16px 12px; }
+  .recit h3 { font-size: 16px; }
+  .recit-texte { font-size: 13px; min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .recit, .recit-choix { animation: none; transition: none; } }

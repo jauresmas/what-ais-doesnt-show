@@ -21,11 +21,11 @@ from shapely import set_precision
 import config
 from graphique_fiche import CATEGORIES
 from outils import log, requete
+from regles import pseudonymiser, sel
 
 CARTO = config.PRODUITES / "carto.gpkg"
 SORTIE = config.RACINE / "carte" / "donnees"
 FICHE = SORTIE / "fiche"
-SEL = config.PRODUITES / "sel_pseudonymes.txt"
 
 CATEGORIES_EN = {
     "réception insuffisante probable": "Shore reception gap",
@@ -51,7 +51,7 @@ def lire(couche, colonnes=None, simplifier=None):
 
 def json_compact(chemin, donnees):
     chemin.write_text(json.dumps(donnees, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
-    log(f"fiche/{chemin.name} : {chemin.stat().st_size / 1e3:.0f} ko")
+    log(f"{chemin.relative_to(SORTIE).as_posix()} : {chemin.stat().st_size / 1e3:.0f} ko")
 
 
 def donnees_fiche():
@@ -72,8 +72,8 @@ def donnees_fiche():
     cv = gpd.read_file(CARTO, layer="couverture", columns=["h3", "classe"], engine="pyogrio")
     fiables = set(cv.loc[cv["classe"] == "Reliable", "h3"])
     paires = requete("SELECT DISTINCT h3_lat_lng_to_cell(geom, 6)::text AS h3, mmsi FROM ais.position")
-    sel = SEL.read_text(encoding="utf-8").strip()
-    ordre = sorted(paires["mmsi"].unique(), key=lambda m: hashlib.sha256(f"n{sel}{int(m)}".encode()).hexdigest())
+    grain = sel()
+    ordre = sorted(paires["mmsi"].unique(), key=lambda m: hashlib.sha256(f"n{grain}{int(m)}".encode()).hexdigest())
     numero = {m: i for i, m in enumerate(ordre)}
     navires = paires.assign(n=paires["mmsi"].map(numero)).groupby("h3")["n"].apply(sorted)
     mailles = {"res": 6, "h": [], "r": [], "f": [], "n": []}
@@ -121,6 +121,122 @@ def donnees_fiche():
         geom = set_precision(zf.geometry.simplify(0.004, preserve_topology=True), 1e-3)  # affichage seulement
         zones.append({"type": "Feature", "properties": chiffres, "geometry": shapely.geometry.mapping(geom)})
     json_compact(FICHE / "zones.json", {"type": "FeatureCollection", "features": zones})
+
+
+def recits():
+    """Données des trois récits guidés de la carte web, choisies dans la base selon des règles fixes :
+    le silence inexpliqué recoupé par une détection radar, le navire au plus grand nombre de sauts
+    impossibles. Navires sous pseudonyme ; traces allégées à une position toutes les deux minutes."""
+    grain = sel()
+    pseudo = lambda m: pseudonymiser(pd.Series([m]), grain).iloc[0]
+    minutes = lambda ts, t0: int((ts - t0).total_seconds() // 60)
+
+    # 1. silence inexpliqué pendant un passage radar, avec une détection sans AIS près du navire
+    c = requete("""SELECT c.id, c.mmsi, c.famille, c.debut, c.fin, c.duree_h, c.distance_nm, s.instant,
+                          ST_X(s.geom) AS lon, ST_Y(s.geom) AS lat
+                   FROM indic.sar_detection s JOIN indic.coupure c ON c.id = s.coupure_id
+                   WHERE c.categorie = 'coupure inexpliquée' AND NOT s.apparie ORDER BY s.instant LIMIT 1""")
+    if c.empty:
+        log("Récits : aucun silence inexpliqué recoupé par le radar")
+        return
+    c = c.iloc[0]
+    t0 = c.debut - pd.Timedelta(hours=5)
+    tr = requete("""SELECT ts, ST_X(geom) AS lon, ST_Y(geom) AS lat FROM ais.position
+                    WHERE mmsi = :m AND ts BETWEEN :a AND :b ORDER BY ts""",
+                 {"m": int(c.mmsi), "a": t0, "b": c.fin + pd.Timedelta(hours=4)})
+    tr = tr[tr.ts.dt.minute % 2 == 0]
+    x0, x1 = tr.lon.min() - 0.25, tr.lon.max() + 0.25
+    y0, y1 = tr.lat.min() - 0.12, tr.lat.max() + 0.12
+    rd = requete("""SELECT ST_X(geom) AS lon, ST_Y(geom) AS lat, apparie, recu_par_reseau AS recu, id
+                    FROM indic.sar_detection
+                    WHERE instant BETWEEN :t - interval '10 minutes' AND :t + interval '10 minutes'
+                      AND categorie IS DISTINCT FROM 'structure fixe probable (parc éolien)'
+                      AND ST_Intersects(geom, ST_MakeEnvelope(:x0, :y0, :x1, :y1, 4326))""",
+                 {"t": c.instant, "x0": x0, "y0": y0, "x1": x1, "y1": y1})
+    # état : 0 reçu par le réseau, 1 identifié mais non reçu, 2 sans AIS, 3 sans AIS près du navire silencieux
+    etat = lambda r: 3 if (not r.apparie and abs(r.lon - c.lon) < 1e-6 and abs(r.lat - c.lat) < 1e-6) else         2 if not r.apparie else 1 if r.recu is False else 0
+    iso = lambda ts: ts.strftime("%Y-%m-%dT%H:%MZ")
+    silence = {
+        "navire": pseudo(c.mmsi), "famille": c.famille, "t0": iso(t0),
+        "debut": minutes(c.debut, t0), "fin": minutes(c.fin, t0), "passe": minutes(c.instant, t0),
+        "duree_h": round(float(c.duree_h), 1), "distance_nm": round(float(c.distance_nm), 1),
+        "trace": [[round(r.lon, 4), round(r.lat, 4), minutes(r.ts, t0)] for r in tr.itertuples()],
+        "radar": [[round(r.lon, 4), round(r.lat, 4), etat(r)] for r in rd.itertuples()],
+        "cadre": [[round(x0, 3), round(y0, 3)], [round(x1, 3), round(y1, 3)]],
+    }
+
+    # 2. un MMSI, deux émetteurs : le navire au plus grand nombre de sauts impossibles
+    n = requete("""SELECT s.mmsi, n.famille, count(*) AS sauts, avg(s.distance_nm) AS distance,
+                          min(s.ts) AS premier, max(s.ts_suivant) AS dernier
+                   FROM indic.saut_position s JOIN indic.anomalie_navire a USING (mmsi)
+                   JOIN ais.navire n USING (mmsi)
+                   WHERE a.position_incoherente GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 1""").iloc[0]
+    t1 = n.premier - pd.Timedelta(hours=1)
+    pos = requete("""SELECT ts, ST_X(geom) AS lon, ST_Y(geom) AS lat FROM ais.position
+                     WHERE mmsi = :m AND ts BETWEEN :a AND :b ORDER BY ts""",
+                  {"m": int(n.mmsi), "a": t1, "b": n.dernier + pd.Timedelta(hours=1)})
+    # pas d'attribution des positions à l'un ou l'autre émetteur : quand les deux navires se croisent,
+    # toute règle peut intervertir leurs trajets. On montre ce que l'AIS montre : la suite des positions
+    # annoncées sous ce MMSI et les sauts impossibles relevés par sql/07_identite.sql
+    sauts = requete("""SELECT ST_X(geom) AS x1, ST_Y(geom) AS y1, ST_X(geom_suivant) AS x2,
+                              ST_Y(geom_suivant) AS y2, ts_suivant FROM indic.saut_position
+                       WHERE mmsi = :m ORDER BY ts""", {"m": int(n.mmsi)})
+    tout = pos[["lon", "lat"]]
+    identite = {
+        "navire": pseudo(n.mmsi), "famille": n.famille, "t0": iso(t1),
+        "distance_nm": round(float(n.distance), 0), "duree_h": round((n.dernier - n.premier).total_seconds() / 3600),
+        "positions": [[round(r.lon, 4), round(r.lat, 4), minutes(r.ts, t1)]
+                      for i, r in enumerate(pos.itertuples()) if i % 2 == 0],
+        "sauts": [[round(r.x1, 4), round(r.y1, 4), round(r.x2, 4), round(r.y2, 4), minutes(r.ts_suivant, t1)]
+                  for r in sauts.itertuples()],
+        "cadre": [[round(tout.lon.min() - 0.3, 3), round(tout.lat.min() - 0.15, 3)],
+                  [round(tout.lon.max() + 0.3, 3), round(tout.lat.max() + 0.15, 3)]],
+    }
+    json_compact(SORTIE / "recits.json", {"silence": silence, "identite": identite})
+
+
+def semaines():
+    """Plusieurs semaines (10_semaines.py, puis 06) : chiffres de chaque semaine, récurrence des angles
+    morts par maille H3, foyers de silences inexpliqués. Absent tant que 10_semaines.py n'a pas tourné."""
+    import sqlite3
+    try:
+        rc = lire("recurrence_couverture", ["statut", "nb_mauvaises", "nb_jugees"])
+    except Exception:
+        log("Pas de données sur plusieurs semaines (10_semaines.py)")
+        for nom in ("recurrence.geojson", "foyers.geojson", "inexpliquees_semaines.geojson", "semaines.json"):
+            (SORTIE / nom).unlink(missing_ok=True)
+        return False
+    ecrire(rc[rc["statut"] != "Not enough traffic"], "recurrence")
+    fo = lire("foyer_inexpliquees", ["nb_semaines", "nb_silences", "nb_navires"])
+    ecrire(fo[fo["nb_semaines"] >= 2], "foyers")
+    ix = lire("inexpliquee_semaines", ["semaine", "famille", "debut", "duree_h"])
+    ix["semaine"] = pd.to_datetime(ix["semaine"]).dt.strftime("%Y-%m-%d")
+    ecrire(ix, "inexpliquees_semaines")
+    # angles morts chroniques par pays : la ZEE la plus proche du centre de chaque maille (une maille
+    # des eaux territoriales, hors des ZEE de Marine Regions, va au pays dont elle borde la ZEE)
+    zee = gpd.read_file(CARTO, layer="zee", engine="pyogrio").to_crs(3035)
+    chron = rc[rc["statut"] == "Chronic"].to_crs(3035)
+    chron = gpd.GeoDataFrame(geometry=chron.geometry.centroid, crs=3035)
+    pays = gpd.sjoin_nearest(chron, zee[["souverain", "geometry"]], how="left")["souverain"].value_counts()
+    n = requete("""SELECT count(DISTINCT mmsi) AS navires,
+                          (SELECT count(*) FROM (SELECT mmsi FROM semaine.inexpliquee GROUP BY mmsi
+                                                 HAVING count(DISTINCT semaine) >= 2) x) AS navires_2
+                   FROM semaine.inexpliquee""").iloc[0]
+    with sqlite3.connect(CARTO) as cnx:
+        cs = pd.read_sql("SELECT * FROM chiffres_semaine ORDER BY semaine", cnx)
+    cs["semaine"] = pd.to_datetime(cs["semaine"]).dt.strftime("%Y-%m-%d")
+    cs["part_couverte"] = cs["part_couverte"].round(3)
+    statuts = rc["statut"].value_counts()
+    json_compact(SORTIE / "semaines.json", {
+        "semaines": cs.drop(columns=["nb_positions"]).to_dict("records"),
+        "mailles": {k: int(v) for k, v in statuts.items()},
+        "foyers": int((fo["nb_semaines"] >= 2).sum()),
+        "foyers_3": int((fo["nb_semaines"] >= 3).sum()),
+        "chroniques_par_pays": {k: int(v) for k, v in pays.items()},
+        "chroniques_km2": int(round(rc[rc["statut"] == "Chronic"].to_crs(3035).area.sum() / 1e6, -1)),
+        "inexpliquees": {"total": int(len(ix)), "navires": int(n.navires), "navires_2_semaines": int(n.navires_2)},
+    })
+    return True
 
 
 def ecrire(g, nom):
@@ -196,9 +312,12 @@ if __name__ == "__main__":
     chiffres = {k: (None if pd.isna(v) else (float(v) if isinstance(v, float) else v))
                 for k, v in etude.items() if k.startswith(("nb_", "nav_", "part_"))}
     chiffres["validation_radar"] = validation
-    (SORTIE / "chiffres.json").write_text(json.dumps(chiffres, indent=1), encoding="utf-8")
-    log(f"chiffres.json : {len(chiffres)} valeurs")
 
     donnees_fiche()
+    recits()
+    # données facultatives : la page ne demande que celles qui sont publiées
+    chiffres["options"] = ["recurrence", "foyers", "inexpliquees_semaines", "semaines"] if semaines() else []
+    (SORTIE / "chiffres.json").write_text(json.dumps(chiffres, indent=1), encoding="utf-8")
+    log(f"chiffres.json : {len(chiffres)} valeurs")
     total = sum(f.stat().st_size for f in SORTIE.rglob("*") if f.is_file())
     log(f"Données de la carte : {total / 1e6:.1f} Mo")

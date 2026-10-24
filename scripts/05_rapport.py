@@ -157,6 +157,31 @@ def rapport():
                       ON k.id = s.coupure_id WHERE k.categorie = 'coupure inexpliquée')::int AS vues
             FROM indic.coupure c WHERE c.categorie = 'coupure inexpliquée'""").iloc[0]
 
+    sem = None
+    if requete("SELECT to_regclass('semaine.recurrence') IS NOT NULL AS ok")["ok"][0]:
+        sem = requete("""
+            SELECT to_char(semaine, 'DD/MM') AS "Semaine du", nb_navires::int AS "Navires",
+                   nb_positions::int AS "Positions", nb_silences::int AS "Silences",
+                   nb_reception::int AS "Trous de réception", nb_inexpliquees::int AS "Inexpliqués",
+                   nav_mmsi_partage::int AS "MMSI partagés", nb_rencontres::int AS "Rencontres",
+                   part_couverte FROM semaine.chiffres ORDER BY semaine""")
+        sem["Trafic bien couvert"] = sem.pop("part_couverte").map(pourcent)
+        recurrence = requete("""
+            SELECT CASE statut WHEN 'Chronic' THEN 'chronique (mauvaise 3 ou 4 semaines)'
+                               WHEN 'Recurring' THEN 'récurrente (2 semaines)'
+                               WHEN 'One-off' THEN 'ponctuelle (1 semaine)'
+                               WHEN 'Never poor' THEN 'jamais mauvaise'
+                               ELSE 'trafic insuffisant pour juger' END AS "Maille H3",
+                   count(*)::int AS "Mailles"
+            FROM semaine.recurrence GROUP BY statut ORDER BY min(CASE statut WHEN 'Chronic' THEN 1
+                 WHEN 'Recurring' THEN 2 WHEN 'One-off' THEN 3 WHEN 'Never poor' THEN 4 ELSE 5 END)""")
+        foyers = requete("""
+            SELECT count(*) FILTER (WHERE nb_semaines >= 2)::int AS deux,
+                   count(*) FILTER (WHERE nb_semaines >= 3)::int AS trois,
+                   (SELECT count(*) FROM (SELECT mmsi FROM semaine.inexpliquee GROUP BY mmsi
+                                          HAVING count(DISTINCT semaine) >= 2) n)::int AS navires
+            FROM semaine.foyer""").iloc[0]
+
     nb_navires = requete("SELECT count(*) AS n FROM ais.navire")["n"][0]
     debut, fin = config.DEBUT.strftime("%d/%m/%Y"), config.FIN.strftime("%d/%m/%Y")
 
@@ -246,6 +271,20 @@ Détections sans AIS :
 Sur les silences inexpliqués, {fr(inexpl.pendant)} ont eu lieu pendant un passage du satellite ; pour {fr(inexpl.vues)} d'entre eux, une détection sans AIS se trouve à moins de 5 km de la position supposée du navire. Une détection « radar seul » n'est pas une infraction : bien des navires assez grands pour être vus au radar ne sont pas tenus d'émettre en AIS (plaisance, pêche de moins de 15 m, petits navires de servitude).
 
 *Détections radar : Powered by Global Fishing Watch (CC BY-NC 4.0).*
+"""
+    if sem is not None:
+        md += f"""
+## 10. Plusieurs semaines : ponctuel ou chronique ?
+
+La même chaîne, sans aucune modification, a tourné sur chaque semaine, dans sa propre base (`10_semaines.py`). La semaine d'étude est la dernière.
+
+{tableau(sem)}
+
+Classe de couverture de chaque maille H3, semaine après semaine (une maille n'est jugée qu'une semaine où son trafic suffit) :
+
+{tableau(recurrence)}
+
+Silences inexpliqués : {fr(int(sem["Inexpliqués"].sum()))} sur les {len(sem)} semaines. {fr(foyers.deux)} mailles H3 de résolution 5 (≈ 250 km²) en voient commencer au moins deux semaines différentes, {"aucune" if foyers.trois == 0 else fr(foyers.trois)} trois semaines ou plus ; {"un seul navire a" if foyers.navires == 1 else fr(foyers.navires) + " navires ont"} un silence inexpliqué au moins deux semaines différentes. Les silences inexpliqués ne reviennent donc pas aux mêmes endroits, ce qu'ils feraient s'ils tenaient à un défaut de la méthode ou de la couverture ; les angles morts chroniques, eux, sont durables. Ces récurrences désignent des lieux à suivre, pas des infractions.
 """
     sortie = config.DOCS / "rapport_qualite.md"
     sortie.write_text(md, encoding="utf-8")

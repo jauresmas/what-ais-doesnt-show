@@ -22,6 +22,10 @@ Les données couvrent **les détroits danois et le bassin de Bornholm, du 13 au 
 
 ## 2. Installer l'outil (une seule fois)
 
+**Le plus simple : l'extension.** Dans QGIS, menu **Extensions > Installer/Gérer les extensions > Installer depuis un ZIP**, choisir `sorties/extension/what_ais_fiche_zone.zip`, puis **Installer l'extension**. L'outil apparaît dans la boîte à outils de traitement sous **What AIS doesn't show > Produire une fiche de zone**, dans tous les projets, et se désinstalle comme n'importe quelle extension. L'archive contient exactement le fichier `qgis/outils/fiche_zone.py` ; un test vérifie à chaque envoi sur GitHub qu'elle est à jour.
+
+**Ou, sans extension, en ajoutant le script :**
+
 1. Ouvrir le projet `qgis/what_ais_doesnt_show.qgz`.
 2. Menu **Traitement > Boîte à outils** (ou `Ctrl+Alt+T`).
 3. En haut de la boîte à outils, cliquer sur l'icône Python (le logo bleu et jaune), puis **Ajouter un script à la boîte à outils…**
@@ -123,6 +127,8 @@ Les signaux (silences inexpliqués, MMSI partagés, stationnements, rencontres) 
 | Le titre reste « Area of interest » | Ni nom saisi, ni champ `nom` ou `name` renseigné sur le polygone, ou plusieurs polygones sélectionnés. |
 
 ## 7. Pour aller plus loin
+
+- **Depuis l'extension**, l'identifiant de l'outil est `whataisdoesntshow:fiche_zone` (au lieu de `script:fiche_zone`) dans les exemples ci-dessous.
 
 - **Modifier l'apparence** : la mise en page **Zone sheet** du projet sert de modèle ; toute modification (texte, couleur, logo) se retrouve dans les fiches suivantes. Pour la rendre durable, la reporter dans `scripts/07_projet_qgis.py`.
 - **Depuis la console Python de QGIS** :

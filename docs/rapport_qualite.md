@@ -1,6 +1,6 @@
 # Rapport qualité
 
-*Généré par `scripts/05_rapport.py` le 23/10/2026. Période : du 13/10/2026 au 19/10/2026. Zone : 9,0–16,5° E, 53,9–58,2° N.*
+*Généré par `scripts/05_rapport.py` le 24/10/2026. Période : du 13/10/2026 au 19/10/2026. Zone : 9,0–16,5° E, 53,9–58,2° N.*
 
 ## 1. Nettoyage des données AIS
 
@@ -165,3 +165,26 @@ Détections sans AIS :
 Sur les silences inexpliqués, 3 ont eu lieu pendant un passage du satellite ; pour 1 d'entre eux, une détection sans AIS se trouve à moins de 5 km de la position supposée du navire. Une détection « radar seul » n'est pas une infraction : bien des navires assez grands pour être vus au radar ne sont pas tenus d'émettre en AIS (plaisance, pêche de moins de 15 m, petits navires de servitude).
 
 *Détections radar : Powered by Global Fishing Watch (CC BY-NC 4.0).*
+
+## 10. Plusieurs semaines : ponctuel ou chronique ?
+
+La même chaîne, sans aucune modification, a tourné sur chaque semaine, dans sa propre base (`10_semaines.py`). La semaine d'étude est la dernière.
+
+| Semaine du | Navires | Positions | Silences | Trous de réception | Inexpliqués | MMSI partagés | Rencontres | Trafic bien couvert |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| 22/09 | 3 156 | 10 090 264 | 4 974 | 471 | 4 | 11 | 64 | 89,6 % |
+| 29/09 | 3 136 | 10 247 892 | 4 927 | 302 | 7 | 17 | 74 | 88,9 % |
+| 06/10 | 2 837 | 9 127 334 | 3 836 | 476 | 11 | 13 | 58 | 91,9 % |
+| 13/10 | 2 894 | 9 307 222 | 3 880 | 496 | 11 | 10 | 47 | 91,3 % |
+
+Classe de couverture de chaque maille H3, semaine après semaine (une maille n'est jugée qu'une semaine où son trafic suffit) :
+
+| Maille H3 | Mailles |
+|---|---:|
+| chronique (mauvaise 3 ou 4 semaines) | 168 |
+| récurrente (2 semaines) | 143 |
+| ponctuelle (1 semaine) | 207 |
+| jamais mauvaise | 2 430 |
+| trafic insuffisant pour juger | 1 073 |
+
+Silences inexpliqués : 33 sur les 4 semaines. 4 mailles H3 de résolution 5 (≈ 250 km²) en voient commencer au moins deux semaines différentes, aucune trois semaines ou plus ; un seul navire a un silence inexpliqué au moins deux semaines différentes. Les silences inexpliqués ne reviennent donc pas aux mêmes endroits, ce qu'ils feraient s'ils tenaient à un défaut de la méthode ou de la couverture ; les angles morts chroniques, eux, sont durables. Ces récurrences désignent des lieux à suivre, pas des infractions.

@@ -1,4 +1,10 @@
-"""Paramètres du projet : période, zone d'étude, chemins, base PostGIS."""
+"""Paramètres du projet : période, zone d'étude, chemins, base PostGIS.
+
+Sans variable d'environnement, tout porte sur la semaine d'étude, dans la base « ais ».
+AIS_DEBUT (premier jour, AAAA-MM-JJ) et AIS_BASE font tourner la même chaîne sur une autre
+semaine, dans sa propre base : c'est ce que fait 10_semaines.py.
+"""
+import os
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -13,9 +19,14 @@ SORTIES = RACINE / "sorties"
 DOCS = RACINE / "docs"
 
 # Période : la dernière semaine complète publiée par l'Autorité maritime danoise
-DEBUT = date(2026, 10, 13)
-FIN = date(2026, 10, 19)
+SEMAINE_ETUDE = date(2026, 10, 13)
+DEBUT = date.fromisoformat(os.environ.get("AIS_DEBUT", SEMAINE_ETUDE.isoformat()))
+FIN = DEBUT + timedelta(days=6)
 JOURS = [DEBUT + timedelta(days=i) for i in range((FIN - DEBUT).days + 1)]
+
+# Semaines de comparaison (mardi à lundi, comme la semaine d'étude) : un angle mort est-il
+# ponctuel ou chronique ? Chacune passe par la même chaîne, dans sa propre base.
+SEMAINES = [date(2026, 9, 22), date(2026, 9, 29), date(2026, 10, 6), SEMAINE_ETUDE]
 
 # Zone d'étude : détroits danois et bassin de Bornholm (WGS84)
 BBOX = (9.0, 53.9, 16.5, 58.2)  # ouest, sud, est, nord
@@ -48,7 +59,7 @@ PG_DATA = RACINE / ".pgdata"
 PG_HOST = "localhost"
 PG_PORT = 5434
 PG_USER = "ais"
-PG_DB = "ais"
+PG_DB = os.environ.get("AIS_BASE", "ais")
 
 # Python de QGIS, pour construire le projet et les fiches hors interface (étape 07)
 PYTHON_QGIS = Path(r"C:\Program Files\QGIS 3.34.12\bin\python-qgis-ltr.bat")

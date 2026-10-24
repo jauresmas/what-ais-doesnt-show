@@ -18,10 +18,10 @@ def connexion(base=config.PG_DB):
                             user=config.PG_USER, dbname=base)
 
 
-def moteur():
+def moteur(base=None):
     from sqlalchemy import create_engine
     return create_engine(f"postgresql+psycopg2://{config.PG_USER}@{config.PG_HOST}:"
-                         f"{config.PG_PORT}/{config.PG_DB}")
+                         f"{config.PG_PORT}/{base or config.PG_DB}")
 
 
 def variables_sql():
@@ -47,9 +47,9 @@ def psql(sql=None, fichier=None, base=config.PG_DB, variables=None):
     return res.stdout
 
 
-def requete(sql, params=None):
-    """Renvoie le résultat d'une requête sous forme de DataFrame."""
+def requete(sql, params=None, base=None):
+    """Renvoie le résultat d'une requête sous forme de DataFrame (base de la semaine d'étude par défaut)."""
     import pandas as pd
     from sqlalchemy import text
-    with moteur().connect() as cnx:
+    with moteur(base).connect() as cnx:
         return pd.read_sql_query(text(sql), cnx, params=params)

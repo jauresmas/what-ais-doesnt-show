@@ -1,0 +1,49 @@
+# Contrôle à chaque envoi : le code se compile, les règles et les données publiées passent leurs tests,
+# la carte web fonctionne dans un navigateur, et l'extension QGIS se construit.
+name: Contrôle
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests (règles, données, carte web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
+      - name: Dépendances
+        run: |
+          pip install -r tests/requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Compilation de tous les scripts
+        run: python -m compileall -q scripts qgis tests
+      - name: Tests
+        run: python -m pytest -v
+
+  extension:
+    name: Extension QGIS
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Construction
+        run: python scripts/empaqueter_extension.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-qgis-what-ais-fiche-zone
+          path: sorties/extension/what_ais_fiche_zone.zip

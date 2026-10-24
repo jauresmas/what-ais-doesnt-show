@@ -103,3 +103,14 @@ Limites : Sentinel-1 ne voit pas bien les navires de moins de 15 à 20 m, qui ne
 ## 9. Confidentialité
 
 Les livrables publics (cartes, fiche de zone, page web) n'affichent que des agrégats par maille ou par zone, et des navires pseudonymisés (empreinte du MMSI salée, le sel restant sur le poste). Aucun navire n'est présenté comme fautif : les indicateurs signalent des écarts au comportement attendu, pas des infractions.
+
+Les données de la fiche de zone calculée dans le navigateur listent, pour chaque maille H3, les navires qui la traversent sous des numéros attribués dans l'ordre d'un hachage salé : un numéro ne dit rien du MMSI ni du pseudonyme. Un test automatique vérifie à chaque envoi qu'aucun MMSI ni identifiant ne figure dans les données publiées par la carte web.
+
+## 10. Plusieurs semaines (`10_semaines.py`, `sql/13_semaines.sql`)
+
+Une semaine ne dit pas si un angle mort ou un silence est ponctuel ou chronique. Les trois semaines qui précèdent la semaine d'étude passent donc par **la même chaîne, sans aucune modification** (étapes 00 à 04, mêmes seuils), chacune dans sa propre base (`ais_AAAA_MM_JJ`) : seule la variable d'environnement `AIS_DEBUT` change. Les semaines vont du mardi au lundi, comme la semaine d'étude.
+
+- **Récurrence des angles morts.** Chaque maille H3 reçoit chaque semaine la classe de couverture de la carte (§ 2). Une maille n'est jugée qu'une semaine où son trafic suffit. Elle est *chronique* si elle est mauvaise au moins trois semaines sur quatre, *récurrente* deux semaines, *ponctuelle* une seule ; *jamais mauvaise* si elle a été jugée au moins deux fois sans jamais l'être.
+- **Foyers de silences inexpliqués.** Le début de chaque silence inexpliqué est rattaché à une maille H3 de résolution 5 (≈ 250 km²) ; un foyer est une maille où de tels silences commencent au moins deux semaines différentes. Le nombre de navires ayant un silence inexpliqué au moins deux semaines est donné dans le rapport qualité, sans les désigner.
+
+Une maille chronique est un manque durable du réseau côtier, là où une détection indépendante de l'émission du navire apporte le plus ; une maille ponctuelle relève plutôt de la propagation (météo, conduits troposphériques) ou d'une station en panne cette semaine-là.

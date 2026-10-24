@@ -1,0 +1,16 @@
+[general]
+name=What AIS doesn't show - Zone sheet
+qgisMinimumVersion=3.28
+description=A4 zone sheet of the "What AIS doesn't show" project for any polygon, from the Processing toolbox.
+about=Adds the Processing algorithm "Produire une fiche de zone" (provider "What AIS doesn't show"). Draw or select a polygon in the project qgis/what_ais_doesnt_show.qgz: the tool computes the key figures of the area with the rules of the zone-sheet atlas and exports the A4 sheet to PDF. Same code as qgis/outils/fiche_zone.py; user guide in docs/guide_fiche_zone.md (French).
+version=1.0.0
+author=Jaurès Daa-Hingbanon
+email=
+repository=https://github.com/jauresmas/what-ais-doesnt-show
+homepage=https://jauresmas.github.io/what-ais-doesnt-show/carte/
+tracker=https://github.com/jauresmas/what-ais-doesnt-show/issues
+category=Analysis
+tags=ais,maritime,processing,atlas,h3,layout
+hasProcessingProvider=yes
+experimental=False
+deprecated=False

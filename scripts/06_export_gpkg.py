@@ -4,13 +4,8 @@
     donnees/produites/traces.gpkg   traces des navires (lourd, non versionné)
     qgis/graphiques/<zone>.svg      graphique « d'où viennent les silences » de chaque fiche
 
-Les navires n'y figurent que sous un pseudonyme (V-XXXXXX), empreinte SHA-256 du MMSI salée.
-Le sel reste sur le poste (donnees/produites/sel_pseudonymes.txt, non versionné) : sans lui,
-on ne remonte pas au MMSI, et deux exports successifs gardent les mêmes pseudonymes.
+Les navires n'y figurent que sous un pseudonyme (V-XXXXXX) : voir regles.py.
 """
-import hashlib
-import secrets
-
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import MultiPolygon
@@ -18,11 +13,11 @@ from shapely.geometry import MultiPolygon
 import config
 from graphique_fiche import CATEGORIES, graphique
 from outils import log, moteur, requete
+from regles import classe_couverture, pseudonymiser, sel
 
 CARTO = config.PRODUITES / "carto.gpkg"
 TRACES = config.PRODUITES / "traces.gpkg"
 GRAPHIQUES = config.RACINE / "qgis" / "graphiques"
-SEL = config.PRODUITES / "sel_pseudonymes.txt"
 
 # repères de lecture de la carte : mers, îles, villes
 LIEUX = [
@@ -47,16 +42,6 @@ ZONES_ZEE = [
     ("german-eez", "German EEZ", "German Exclusive Economic Zone"),
     ("polish-eez", "Polish EEZ", "Polish Exclusive Economic Zone"),
 ]
-
-
-def sel():
-    if not SEL.exists():
-        SEL.write_text(secrets.token_hex(16), encoding="utf-8")
-    return SEL.read_text(encoding="utf-8").strip()
-
-
-def pseudonymiser(serie, grain):
-    return serie.map(lambda m: "V-" + hashlib.sha256(f"{grain}{int(m)}".encode()).hexdigest()[:6].upper())
 
 
 def lire(sql, eng):
@@ -144,19 +129,6 @@ def contours(zs, eng):
         trait = bord if z.zone_id == "study-area" else bord.intersection(guides)
         lignes.append({"zone_id": z.zone_id, "geom": trait.simplify(0.001)})
     return gpd.GeoDataFrame(lignes, geometry="geom", crs=4326)
-
-
-def classe_couverture(r):
-    attendus = r["nb_navires"] + r["nb_navires_perdus"]
-    if r["bonne"]:
-        return "Reliable"
-    if attendus >= 5 and r["taux_perte"] > 0.2:
-        return "Poor"
-    if r["nb_intervalles"] < 100:
-        return "Not enough traffic"
-    if r["taux_perte"] > 0.2 or (r["taux_reception"] or 0) < 0.8:
-        return "Poor"
-    return "Degraded"
 
 
 if __name__ == "__main__":
@@ -273,6 +245,19 @@ if __name__ == "__main__":
         # booléen avec valeurs nulles : sans type explicite, il partirait en texte 'True' / 'False'
         rd["recu_par_reseau"] = rd["recu_par_reseau"].astype("boolean")
         ecrire(rd, "detection_radar")
+
+    # plusieurs semaines (10_semaines.py) : récurrence des angles morts, silences inexpliqués semaine
+    # par semaine (sans MMSI) et leurs foyers, chiffres de chaque semaine
+    if requete("SELECT to_regclass('semaine.recurrence') IS NOT NULL AS ok")["ok"][0]:
+        ecrire(lire("""SELECT h3::text AS h3, nb_jugees, nb_fiables, nb_degradees, nb_mauvaises, statut, geom
+                       FROM semaine.recurrence""", eng), "recurrence_couverture")
+        ecrire(lire("""SELECT semaine, famille, debut, round(duree_h::numeric, 1) AS duree_h, geom
+                       FROM semaine.inexpliquee""", eng), "inexpliquee_semaines")
+        ecrire(lire("""SELECT h3::text AS h3, nb_semaines, nb_silences, nb_navires, geom FROM semaine.foyer""", eng),
+               "foyer_inexpliquees")
+        cs = requete("SELECT * FROM semaine.chiffres ORDER BY semaine")
+        cs.to_sql("chiffres_semaine", f"sqlite:///{CARTO}", index=False, if_exists="replace")
+        log(f"{CARTO.name} / chiffres_semaine : {len(cs)} semaines (table sans géométrie)")
 
     nv = requete("""SELECT n.mmsi, n.famille, n.pavillon, n.longueur, n.imo_statut, n.nb_noms, n.nb_imo,
                            n.nb_types, n.nb_positions, a.nb_sauts, a.nb_coupures_inexpliquees,

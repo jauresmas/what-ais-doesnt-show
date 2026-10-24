@@ -4,7 +4,7 @@ Toutes les données d'entrée sont ouvertes. Les téléchargements bruts sont co
 
 | Couche | Producteur | Accès | Licence, conditions | Usage |
 |---|---|---|---|---|
-| Positions et données statiques AIS, 13–19 octobre 2026 | Autorité maritime danoise (DMA), AIS historique | `aisdata.ais.dk`, un ZIP par jour (≈ 600 Mo) | Réutilisation libre et gratuite (politique de gestion des données AIS de la DMA) | Tous les indicateurs |
+| Positions et données statiques AIS, 13–19 octobre 2026 (semaine d'étude) et 22 septembre – 12 octobre 2026 (semaines de comparaison) | Autorité maritime danoise (DMA), AIS historique | `aisdata.ais.dk`, un ZIP par jour (≈ 600 Mo) | Réutilisation libre et gratuite (politique de gestion des données AIS de la DMA) | Tous les indicateurs ; récurrence sur quatre semaines |
 | Zones économiques exclusives, mers territoriales de 12 milles | Flanders Marine Institute, Marine Regions (EEZ v12) | WFS `geo.vliz.be` | CC BY 4.0 depuis la v11 ; pas d'usage juridique ni de navigation | Statistiques par zone, cartes |
 | Terres au 1:1 000 000 | Eurostat GISCO, Countries 2024 | API GeoJSON | © EuroGeographics, citation obligatoire | Bande côtière, cartes |
 | Pipelines, câbles électriques et de données allemands, parcs éoliens en mer | EMODnet Human Activities (BSH CONTIS pour les câbles allemands) | WFS `ows.emodnet-humanactivities.eu` | CC BY 4.0 (conditions d'utilisation EMODnet), citer EMODnet et le BSH | Couche infrastructures |

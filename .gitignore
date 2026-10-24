@@ -22,3 +22,10 @@ donnees/produites/traces.gpkg
 # Jeton d'API Global Fishing Watch : reste sur le poste
 .gfw_token
 gfw_token.txt
+
+# Réglages locaux de Claude Code
+.claude/
+semaines.log
+
+# Sauvegarde de la base, pour la recopier dans un autre PostgreSQL
+donnees/sauvegarde/
